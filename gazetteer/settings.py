@@ -1,0 +1,1 @@
+TARGET_NAMESPACE_FT = 'http://mapstory.org/def/featuretypes/gazetteer/'
