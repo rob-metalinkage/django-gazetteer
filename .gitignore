@@ -1,4 +1,4 @@
-django_osgeo_importer.egg-info/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -58,29 +58,9 @@ docs/_build/
 target/
 
 # test files
-importer-test-files/
+
 .vagrant
 profile.sh
 gs/
-gdal-2.1.0-linux-bin.tar.gz
-B
-B
-B
-B
-B
-A
-A
-A
-A
-A
-A
-A
-A
-A
-A
-A
-A
-A
-A
-A
+
 
