@@ -4,19 +4,32 @@ import datetime
 import json
 from mapstory.tests import MapStoryTestMixin, AdminClient
 from .models import Location,LocationName
-from skosxl.models import Concept, Scheme
+from skosxl.models import Concept, Scheme, MapRelation
 from gazetteer.settings import TARGET_NAMESPACE_FT
+from gazetteer.harvest import harvest
 
 class GazHarvestTest(TestCase):
 
     def setUp(self):
         #import pdb; pdb.set_trace()
         sch = Scheme.objects.create(uri=TARGET_NAMESPACE_FT[:-1], pref_label="Gaz Features types")
+       
         ft = Concept.objects.create(term="PPL", pref_label="Populated Place", definition = "def", scheme = sch)
         Location.objects.create(defaultName="Wollongong", locationType=ft, latitude=-34.433056 , longitude=150.883057 )
         LocationName.objects.create(name="Wollongong", language='en', location=Location.objects.first() )
         LocationName.objects.create(name="http://dbpedia.org/resource/Wollongong", language='', namespace="http://dbpedia.org/resource/", location=Location.objects.first() )
-    
+        # now set up cross references from another namespace
+        sch2 = Scheme.objects.create(uri="http://mapstory.org/def/ft/nga", pref_label="NGA gaz codes")
+        ft2 = Concept.objects.create(term="PPLA", pref_label="Populated Place", definition = "def", scheme = sch2)
+        mr = MapRelation.objects.create(match_type=  1, origin_concept=ft2 , uri="".join((TARGET_NAMESPACE_FT,"PPL")))
+        
+    def test_harvest(self):
+        """
+        Tests the harvester endpoint - assumss a config and data are loaded..
+        """
+        import pdb; pdb.set_trace()
+        report = harvest('mapstory','tu_sample', "".join(('http://localhost', reverse('updateloc'))))
+        
     def test_location_match(self):
         """
         Tests finding a gazetteer entry.

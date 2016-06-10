@@ -1,14 +1,11 @@
 from django.shortcuts import render
-from django.db import transaction
+#from django.db import transaction
 from django.db.models import F
 from django.http import HttpResponse, Http404
 from django.core.urlresolvers import reverse
-from geonode.utils import json_response
 import json
-# from mapstory.models import Location, LocationName
-import psycopg2
-import psycopg2.extras
-from psycopg2.extensions import AsIs
+from gazetteer.sources.abstractsource import AbstractSource, get_handler
+
 import requests
 
 
@@ -26,6 +23,7 @@ def harvestlayer(req, layerid):
         the layer set is definined in the settings - and hence the handler to extract the features - from shapefile, postgis etc.
     """
     
+    sourcetype='mapstory'
     # optional limit
     maxfeatures = req.GET.get('n')
     if maxfeatures :
@@ -33,16 +31,20 @@ def harvestlayer(req, layerid):
     if req.GET.get('pdb') :
         import pdb; pdb.set_trace()
 
+    endpoint =  req.build_absolute_uri(reverse('updateloc'))
+    try:
+        return HttpResponse ( status=201, mimetype="application/json", content= harvest(sourcetype, layerid,endpoint,maxfeatures) )
+    except Exception as e:
+        return HttpResponse( status=500, content=e)
+    
+def harvest(sourcetype, layerid,endpoint,maxfeatures = None) :
     # get identified layer
     sourcelayer = _getlayer(layerid)
     # get the harvest mappings for that layer - or throw 400 if not available
-    harvestconfig = _getharvestconfig(sourcelayer)
+    harvestconfig = _getharvestconfig(sourcetype,sourcelayer)
     if not harvestconfig :
-        return HttpResponse(
-            "Harvest configuration not found",
-            mimetype="text/plain",
-            status=400)
-            
+        raise  Exception("Harvest configuration not found")
+           
     # get an iterator over the features for that layer
     
     f_processed = 0
@@ -50,10 +52,12 @@ def harvestlayer(req, layerid):
     newnames = 0
     updatednames = 0
     
+    source = get_handler(sourcetype)
+    if not source :
+        raise  Exception("Harvest handler not defined for datasource configured")
     try:
-        conn = _get_sourceconn(sourcelayer)
-        for f in _getfeatures(conn, harvestconfig) :
-            (newloc, newnamecount, updatenamecount) =  _updategaz(req,f,harvestconfig)
+        for f in source().getfeatures(harvestconfig) :
+            (newloc, newnamecount, updatenamecount) =  _updategaz(f,harvestconfig,endpoint)
             if newloc :
                 f_added += 1
             f_processed += 1
@@ -63,49 +67,17 @@ def harvestlayer(req, layerid):
                 break
     except Exception as e:
         logger.error( "Gazetteer harvest failed during - layer = %s, error = %s" % (layerid, e) )
-        if conn :
-            conn.close()
-        
-    return json_response({'features':f_processed, 'added':f_added, 'layer':layerid})
+            
+    return {'features':f_processed, 'added':f_added, 'layer':layerid}
 
 def _getlayer(layerid):
     return None
 
-def _get_sourceconn(sourcelayer) :
-   # get db connection
-    connect_params = "host=localhost dbname=mapstory_data user=mapstory password=foobar"
-    return psycopg2.connect(connect_params) 
-
-def _getfeatures(conn,config):
-    """
-        Yields a feature iterator. Each feature is a dict
-        Throws exceptions
-        May want to switch to server-side cursor.
-    """
-    cur = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
-    SQL = "select * from %s "  
-    if config.get('filter') :
-        filterclause = 'WHERE '
-
-        # process clauses in an injection-safe way and append to SQL 
-    try :
-        cur.execute(SQL, (AsIs(config.get('source')), ))
-    except Exception as e:
-        # import pdb; pdb.set_trace() 
-        raise e
-    for r in cur :
-        yield r
-        # break
-    # refactor if necessary to force connection close on failure
-    
-def _updategaz(req,f,config):
+def _updategaz(f,config,endpoint):
     """
         convert a feature to a gaz JSON structure and post it to the gazetteer transaction API
     """
-    if req.GET.get('pdb2') :
-        debugstr = 'pdb=1'
-    else:
-        debugstr = ''
+    debugstr=''
     try:
         gazobj = {}
         if config.get('locationTypeField') :
@@ -137,7 +109,7 @@ def _updategaz(req,f,config):
             gazobj['names'].append( {'name':f[namefield['field']],'language':lang})
         # now post to the transaction API
         # import pdb; pdb.set_trace() 
-        result = requests.post( "?".join((req.build_absolute_uri(reverse('updateloc')), debugstr)),data=json.dumps(gazobj))
+        result = requests.post( endpoint,data=json.dumps(gazobj))
         if result.status_code > 300 :
             logger.error("Error response updating gazetteer %s" % result )
         if debugstr :
@@ -164,7 +136,7 @@ def _lookup_skos_notation_map( tns, ns_localft, term ) :
             return code
     return None
     
-def _getharvestconfig(sourcelayer):
+def _getharvestconfig(sourcetype,sourcelayer):
     config = {
         'source': 'tu_sample',
         'filter': None , 
