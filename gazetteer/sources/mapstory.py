@@ -15,7 +15,7 @@ class MapstorySource(PostgresSource) :
         self.set_conn (self.connstring) 
    
  
-    def getfeatures(self,config):
+    def getfeatures(self,sourcebinding):
         """
             Yields a feature iterator. Each feature is a dict
             Throws exceptions
@@ -23,12 +23,13 @@ class MapstorySource(PostgresSource) :
         """
         cur = self.conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor) 
         SQL = "select * from %s "  
-        if config.get('filter') :
-            filterclause = 'WHERE '
+        if sourcebinding.filter or sourcebinding.config.filter :
+            print "Need to apply filter!"
+            # filterclause = 'WHERE '
 
             # process clauses in an injection-safe way and append to SQL 
         try :
-            cur.execute(SQL, (AsIs(config.get('source')), ))
+            cur.execute(SQL, (AsIs(sourcebinding.source), ))
         except Exception as e:
             # import pdb; pdb.set_trace() 
             raise e

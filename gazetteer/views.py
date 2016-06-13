@@ -5,7 +5,7 @@ from django.http import HttpResponse, Http404
 from geonode.utils import json_response
 import json
 from gazetteer.models import Location, LocationName
-from gazetteer.harvest import harvestlayer
+from gazetteer.harvest import harvestlayer,harvestsource
 from skosxl.models import Notation, Concept
 
 from django.views.decorators.csrf import csrf_exempt
@@ -67,6 +67,8 @@ def updateloc(req, *args, **kwargs):
     return _matchloc(req, insert=True )
     
 def _matchloc(req,insert):
+    if req.method != 'POST' :
+        return HttpResponse('Access method not supported', status=405)
     if req.GET.get('pdb') :
         import pdb; pdb.set_trace()
     try:
@@ -188,8 +190,9 @@ def _insertloc(locobj):
     if not locationType :
         
         raise ValueError ('Invalid location type ' + locobj['locationType'])   
-  
-    return Location.objects.create(defaultName=locobj['defaultName'], locationType=locationType, latitude=locobj['latitude'] , longitude=locobj['latitude'] )
+    
+    defaultName = locobj['defaultName'] or locobj['names'][0] 
+    return Location.objects.create(defaultName=defaultName, locationType=locationType, latitude=locobj['latitude'] , longitude=locobj['latitude'] )
  
     
 def recordname(req, locid):

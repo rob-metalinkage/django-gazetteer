@@ -5,6 +5,7 @@ from django.http import HttpResponse, Http404
 from django.core.urlresolvers import reverse
 import json
 from gazetteer.sources.abstractsource import AbstractSource, get_handler
+from gazetteer.models import GazSource,LocationTypeField,CodeFieldConfig,NameFieldConfig
 
 import requests
 
@@ -16,12 +17,13 @@ logger.addHandler(logging.NullHandler())
 from .settings import TARGET_NAMESPACE_FT 
 
 
-def harvestlayer(req, layerid):
+def harvestsource(req, layerid):
     """
-        Get data for a layer and its harvest config and harvest to gazetteer.
-        for each feature, build gaz object - then use to match, insert if necessary,  and record name usages
-        the layer set is definined in the settings - and hence the handler to extract the features - from shapefile, postgis etc.
+        Get data for a layer and its harvest config and harvest to gazetteer, using id of a GazSource object
+        for each feature, build gaz object - then use to match, insert if necessary,  and record name usage
     """
+    # get identified layer
+    sourcelayer = _getlayerbyid(layerid)
     
     sourcetype='mapstory'
     # optional limit
@@ -33,13 +35,35 @@ def harvestlayer(req, layerid):
 
     endpoint =  req.build_absolute_uri(reverse('updateloc'))
     try:
-        return HttpResponse ( status=201, mimetype="application/json", content= harvest(sourcetype, layerid,endpoint,maxfeatures) )
+        return HttpResponse ( status=201, mimetype="application/json", content= harvest(sourcetype, sourcelayer ,endpoint,maxfeatures) )
     except Exception as e:
         return HttpResponse( status=500, content=e)
-    
-def harvest(sourcetype, layerid,endpoint,maxfeatures = None) :
+  
+def harvestlayer(req, sourcetype, layer_name):
+    """
+        Get data for a layer and its harvest config and harvest to gazetteersing sourcetype and layer name.
+        for each feature, build gaz object - then use to match, insert if necessary,  and record name usages
+        the layer set is definined in the settings - and hence the handler to extract the features - from shapefile, postgis etc.
+    """
     # get identified layer
-    sourcelayer = _getlayer(layerid)
+    sourcelayer = _getlayer(sourcetype,layer_name)
+    
+    sourcetype='mapstory'
+    # optional limit
+    maxfeatures = req.GET.get('n')
+    if maxfeatures :
+        maxfeatures = int(maxfeatures)
+    if req.GET.get('pdb') :
+        import pdb; pdb.set_trace()
+
+    endpoint =  req.build_absolute_uri(reverse('updateloc'))
+    try:
+        return HttpResponse ( status=201, mimetype="application/json", content= harvest(sourcetype, sourcelayer ,endpoint,maxfeatures) )
+    except Exception as e:
+        return HttpResponse( status=500, content=e)
+  
+def harvest(sourcetype, sourcelayer,endpoint,maxfeatures = None) :
+
     # get the harvest mappings for that layer - or throw 400 if not available
     harvestconfig = _getharvestconfig(sourcetype,sourcelayer)
     if not harvestconfig :
@@ -56,7 +80,7 @@ def harvest(sourcetype, layerid,endpoint,maxfeatures = None) :
     if not source :
         raise  Exception("Harvest handler not defined for datasource configured")
     try:
-        for f in source().getfeatures(harvestconfig) :
+        for f in source().getfeatures(sourcelayer) :
             (newloc, newnamecount, updatenamecount) =  _updategaz(f,harvestconfig,endpoint)
             if newloc :
                 f_added += 1
@@ -66,13 +90,19 @@ def harvest(sourcetype, layerid,endpoint,maxfeatures = None) :
             if maxfeatures and f_processed >= maxfeatures :
                 break
     except Exception as e:
-        logger.error( "Gazetteer harvest failed during - layer = %s, error = %s" % (layerid, e) )
+        logger.error( "Gazetteer harvest failed during - layer = %s, error = %s" % (str(sourcelayer), e) )
+        return e
             
-    return {'features':f_processed, 'added':f_added, 'layer':layerid}
+    return "layer %s features %s, added %s" % (str(sourcelayer) , f_processed , f_added )
 
-def _getlayer(layerid):
-    return None
+def _getlayer(sourcetype,layer):
+    return GazSource.objects.get(source_type=sourcetype, source=layer)
 
+
+def _getlayerbyid(layerid):
+    return GazSource.objects.get(id=layerid)
+ 
+ 
 def _updategaz(f,config,endpoint):
     """
         convert a feature to a gaz JSON structure and post it to the gazetteer transaction API
@@ -80,33 +110,39 @@ def _updategaz(f,config,endpoint):
     debugstr=''
     try:
         gazobj = {}
-        if config.get('locationTypeField') :
-            loc_type_normalised = _lookup_skos_notation_map(TARGET_NAMESPACE_FT, config.get('locationTypeField')['namespace'], f[config.get('locationTypeField')['field']] )
-        elif config.get('locationType') :
-            loc_type_normalised = config.get('locationType')
-            if not loc_type_normalised :
-                raise ValueError ('Cannot find standard location type matching ' + config.get('locationType') )
-        else :
+        ltfield = LocationTypeField.objects.get(config=config)
+        if not ltfield :
             raise ValueError ('No valid location type specification found')
+        elif ltfield.field[0] in ("'",'"') :
+            loc_type_normalised = ltfield.field[1:-1]
+        else  :
+            loc_type_normalised = _lookup_skos_notation_map(TARGET_NAMESPACE_FT, ltfield.namespace, f[ltfield.field] )
+        if not loc_type_normalised :
+            raise ValueError ('Cannot find standard location type matching ' + config.get('locationType') )
+        
+            
             
         gazobj['locationType'] = loc_type_normalised
-        gazobj['latitude'] = f[config['lat_field']]
-        gazobj['longitude'] = f[config['long_field']]
-        gazobj['defaultName'] = f[config['defaultNameField']]
+        gazobj['latitude'] = f[config.lat_field]
+        gazobj['longitude'] = f[config.long_field]
+        #gazobj['defaultName'] = f[config['defaultNameField']]
         
     
         # now record all the names - the API wont insert unless it finds a code, and no matches for that code.
         gazobj['names'] = []
-        for namefield in config.get('codes') :
-            gazobj['names'].append( {'name':f[namefield['field']],'namespace':namefield['namespace']})
-        for namefield in config.get('names') :
-            if namefield.get('languageField') and f.get(namefield['languageField']) :
-                lang = f[namefield['languageField']]
-            elif namefield.get('language') :
-                lang = namefield['language']
+        for namefield in CodeFieldConfig.objects.filter(config=config) :
+            gazobj['names'].append( {'name':f[namefield.field],'namespace':namefield.namespace})
+        for namefield in NameFieldConfig.objects.filter(config=config) :
+            if namefield.languageField and f.get(namefield.languageField) :
+                lang = f[namefield.languageField]
+            elif namefield.language :
+                lang = namefield.language
             else :
                 lang = None 
-            gazobj['names'].append( {'name':f[namefield['field']],'language':lang})
+            gazobj['names'].append( {'name':f[namefield.field],'language':lang})
+            if namefield.as_default :
+                gazobj['defaultName'] = f[namefield.field]
+        
         # now post to the transaction API
         # import pdb; pdb.set_trace() 
         result = requests.post( endpoint,data=json.dumps(gazobj))
@@ -137,25 +173,5 @@ def _lookup_skos_notation_map( tns, ns_localft, term ) :
     return None
     
 def _getharvestconfig(sourcetype,sourcelayer):
-    config = {
-        'source': 'tu_sample',
-        'filter': None , 
-        'locationTypeField' : { 'field': 'dsg', 'namespace':'http://mapstory.org/def/ft/nga/' },
-        'defaultNameField' : 'full_name_' ,
-        'codes' : [ 
-            {'field': 'ufi', 'namespace':'http://geonames.nga.mil/id/', 'uid':True  }
-            ],
-        'names' : [
-            {'field': 'full_name_', 'languageField':'LC' , 'languageNamespace':'http://geonames.nga.mil/def/lang/','language':None, 'name_type':'Endonym'},
-            {'field': 'full_nam_1', 'languageField':'LC' ,'language':'en', 'languageNamespace':'http://geonames.nga.mil/def/lang/', 'name_type':'Exonym'},
-            {'field': 'short_form', 'languageField':'LC' ,'language':'en', 'languageNamespace':'http://geonames.nga.mil/def/lang/', 'name_type':'Exonym'}
-            ],
-        'partOf' : [
-            {'field': 'cc1', 'namespace':'http://id.sirf.net/id/siset/UNGEGN'},
-            ],
-            
-        'lat_field' : 'lat',
-        'long_field' : 'long',
-        'geom_field' : None,
-        }
-    return( config )
+    return sourcelayer.config
+    

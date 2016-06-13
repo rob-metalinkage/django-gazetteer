@@ -60,7 +60,37 @@ class LocationRelation(models.Model):
         
     def __unicode__(self):
         return ( location1 + ' ' + relation + ' ' + location2 )
+
+ 
+     
+    
+class GazSourceConfig(models.Model):
+    """
+        setup parameters to harvest a source data set into a gazetteer format
+    """
+    name = models.CharField(max_length=100, help_text = "name of config")
+    filter = models.TextField(max_length = 1000,blank=True,null=True,help_text="default filter to select features from source data") 
+            
+    lat_field = models.CharField(max_length=20,blank=True,null=True,help_text="Name of field containing latitude in data source - using OGR conventions")
+    long_field = models.CharField(max_length=20,blank=True,null=True,help_text="Name of field containing longitude in data source - using OGR conventions")
+    geom_field = models.CharField(max_length=20,blank=True,null=True,help_text="Name of field containing a geometry in data source - using OGR conventions")
+   
+    def __unicode__(self):
+        return ( self.name )
+   
         
+class GazSource(models.Model):
+    """ 
+        binding of a specific data source to a potentially re-usable configuration
+    """
+    source = models.CharField(max_length=100, help_text = "name of source data set or django model type")
+    source_type = models.CharField(max_length=20,default="mapstory")
+    config = models.ForeignKey(GazSourceConfig)
+    filter = models.TextField(max_length = 1000,blank=True,null=True,help_text="optional filter to further refine selection of features defined in config") 
+
+    def __unicode__(self):
+        return ( self.source_type + ' : ' + self.source )
+    
 class NameLink(models.Model):
     """
         records a link between a registered name and a map layer (by ID)
@@ -70,3 +100,35 @@ class NameLink(models.Model):
     
     def __unicode__(self):
         return ( locname + ' in ' + layerid )
+
+class LocationTypeField(models.Model):
+    """
+        mapping for a source field to a namespace qualified code for location type
+    """
+    config = models.ForeignKey(GazSourceConfig,unique=True)
+    field = models.CharField(max_length=20, help_text="Name of field containing a location type code in data source - using OGR conventions. A constant literal value may be provided in quotes")
+    namespace = models.URLField(blank=True,null=True, help_text="leave blank only if the field contains a fully qualified URI")
+
+  
+        
+class NameFieldConfig(models.Model):
+    """
+        mapping for a source field to a temporally bounded toponym 
+    """
+    config = models.ForeignKey(GazSourceConfig)
+    field = models.CharField(max_length=20,help_text="Name of field containing a name in data source - using OGR conventions")
+    language = models.CharField(max_length=20, null=True,blank=True, help_text="language code, if a constant")
+    languageField = models.CharField(max_length=20,help_text="Name of field containing a language identifier for this name - using OGR conventions") 
+    languageNamespace = models.CharField(max_length=200,null=True,blank=True, help_text="Namespace of provided language field, if set provide SKOS translation to standard language code using this namespace" )
+    name_type = models.CharField(max_length=200,null=True,blank=True, help_text="name type")
+    as_default = models.BooleanField(help_text="use this as default label if provided")
+
+  
+class CodeFieldConfig(models.Model):
+    """
+        mapping for a source field to a namespace qualified code
+    """
+    config = models.ForeignKey(GazSourceConfig)
+    field = models.CharField(max_length=20, help_text="Name of field containing a code in data source - using OGR conventions")
+    namespace = models.URLField(blank=True,null=True)
+  

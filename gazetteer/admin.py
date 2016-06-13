@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django import forms
-from gazetteer.models import Location,LocationName
+from gazetteer.models import *
 from skosxl.models import Notation
 from .settings import TARGET_NAMESPACE_FT
 
@@ -25,7 +25,25 @@ class LocationAdmin(admin.ModelAdmin):
         NameInline,
     ]
 
-        
-#admin.site.register(LocationType);
+class NameFieldConfigInline(admin.TabularInline):
+    model = NameFieldConfig
+    extra = 1
+    
+class CodeFieldConfigInline(admin.TabularInline):
+    model = CodeFieldConfig
+    extra = 1
+
+class LocationTypeFieldInline(admin.TabularInline):
+    model = LocationTypeField
+
+    
+class GazSourceConfigAdmin(admin.ModelAdmin):
+    model = GazSourceConfig
+    inlines = [
+        LocationTypeFieldInline, NameFieldConfigInline, CodeFieldConfigInline
+    ]
+    
+admin.site.register(GazSource);
+admin.site.register(GazSourceConfig,GazSourceConfigAdmin);
 admin.site.register(Location, LocationAdmin);
 admin.site.register(LocationName);
