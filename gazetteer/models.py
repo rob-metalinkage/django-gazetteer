@@ -118,7 +118,7 @@ class NameFieldConfig(models.Model):
     config = models.ForeignKey(GazSourceConfig)
     field = models.CharField(max_length=20,help_text="Name of field containing a name in data source - using OGR conventions")
     language = models.CharField(max_length=20, null=True,blank=True, help_text="language code, if a constant")
-    languageField = models.CharField(max_length=20,help_text="Name of field containing a language identifier for this name - using OGR conventions") 
+    languageField = models.CharField(max_length=20,blank=True,help_text="Name of field containing a language identifier for this name - using OGR conventions") 
     languageNamespace = models.CharField(max_length=200,null=True,blank=True, help_text="Namespace of provided language field, if set provide SKOS translation to standard language code using this namespace" )
     name_type = models.CharField(max_length=200,null=True,blank=True, help_text="name type")
     as_default = models.BooleanField(help_text="use this as default label if provided")

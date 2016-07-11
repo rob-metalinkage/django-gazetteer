@@ -7,7 +7,7 @@ class AbstractSource(object):
     __metaclass__ = abc.ABCMeta
     
     @abc.abstractmethod
-    def getfeatures(self):
+    def getfeatures(self,sourcelayer):
         """Yields a feature iterator. Each feature is a dict. Throws exceptions"""
         return
 
@@ -15,6 +15,9 @@ def get_handler(sourcetype):
     if sourcetype == 'mapstory' :
         import gazetteer.sources.mapstory
         return gazetteer.sources.mapstory.MapstorySource
+    elif sourcetype == 'geonode' :
+        import gazetteer.sources.geonode_handler
+        return gazetteer.sources.geonode_handler.GeonodeSource
     return None
         
 class PostgresSource(AbstractSource):

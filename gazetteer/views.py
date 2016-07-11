@@ -5,7 +5,6 @@ from django.http import HttpResponse, Http404
 from geonode.utils import json_response
 import json
 from gazetteer.models import Location, LocationName
-from gazetteer.harvest import harvestlayer,harvestsource
 from skosxl.models import Notation, Concept
 
 from django.views.decorators.csrf import csrf_exempt
@@ -69,13 +68,13 @@ def updateloc(req, *args, **kwargs):
 def _matchloc(req,insert):
     if req.method != 'POST' :
         return HttpResponse('Access method not supported', status=405)
+        # will need to do more work ot make GET work - build locobj...
     if req.GET.get('pdb') :
         import pdb; pdb.set_trace()
     try:
         if req.method == 'POST':
             locobj = json.loads(req.body)
-            names = locobj['names']
-            typecode = locobj['locationType']
+            return json_response(matchlocation(locobj),insert)
         elif req.method == 'GET':
             if not req.GET.get('namespace') and req.GET.get('name').startswith('http') :
                 names = [{ 'name':req.GET.get('name'), 'namespace': req.GET.get('name')[0:req.GET.get('name').rfind('/')+1] }]
@@ -91,94 +90,99 @@ def _matchloc(req,insert):
             typecode = req.GET['locationType']
         else :
             return HttpResponse('method not supported', status=404) 
-            
-        # we'll build up lists of location ids for different matching strategies. The client will then have to decide how aggressive to be with accepting answers and dealing with inconsistencies.
-        match_ids = { 'code':[] , 'name_lang':[], 'name':[] } 
-        
-        # list of codes found
-        codes = []
-        
-        for nameobj in names: 
-            if not nameobj.has_key('name') :
-                # malformed 
-                raise ValueError('Missing element (name) in gazetteer object')
-            elif not nameobj.get('name') :
-                # skip a null entry - thats OK
-                continue
-            elif nameobj.get('namespace'):
-                codes.append( nameobj )
-                namelist = LocationName.objects.filter( name=nameobj['name'], namespace=nameobj['namespace'] )
-                # should be just one here - but we'll get a list of all found and check this later
-                for n in  namelist :
-                    match_ids['code'].append(n.location.id)
-            elif nameobj.get('language'):
-                namelist = LocationName.objects.filter( name=nameobj['name'], language=nameobj['language'], location__locationType__term=typecode )    
-                if namelist :
-                    for n in  namelist :
-                        match_ids['name_lang'].append(n.location.id)
-            else :
-                namelist = LocationName.objects.filter( name=nameobj['name'], location__locationType__term=typecode)    
-                if namelist :
-                    for n in  namelist :
-                        match_ids['name'].append(n.location.id) 
-
-      
-        # now get details of locations from the ids, deduplicating as we go 
-        matches = {}
-        # we may make this controllable later
-   
-        strategy = 'bestonly' 
-        
-        for matchtype in ["code", "name_lang", "name"] :
-            if match_ids.get( matchtype ) :
-                for locid in  match_ids[matchtype] :
-                    if not matches.get(locid) :
-                        matches[locid] = {"matchtype":matchtype,"locobj":Location.objects.get(id=locid)}
-                if strategy == 'bestonly' and matches :
-                    break
-        
-        # now perform basic validation:
-        count_codes = 0
-        codematch = [] 
-        namelangmatch = []
-        namematch=[]
-        definitiveloc = None
-        for loc in matches.keys() :
-            # count number of code matches - more than one will indicate some error
-            if matches[loc]['matchtype'] == 'code' :
-                count_codes += 1
-                codematch.append(_encodeLoc(loc,matches[loc]['locobj']))
-                definitiveloc = loc
-            elif matches[loc]['matchtype'] == 'name_lang' :  
-                namelangmatch.append(_encodeLoc(loc,matches[loc]['locobj']))
-            elif matches[loc]['matchtype'] == 'name' :  
-                namematch.append(_encodeLoc(loc,matches[loc]['locobj']))
-            # else :
-                # check 
-        
-        if count_codes > 1 :
-            raise ValueError('duplicate records found for feature identifiers  : '+ codematch) 
-        elif count_codes == 0 and insert and codes :
-            # there were codes provided but no match was made - so we can search for and insert this as a new location if missing
-            loc = _insertloc(locobj)
-            if loc :
-                definitiveloc = loc.id
-        
-        if insert and definitiveloc:
-            for nameobj in names:
-                if nameobj.get('name') :
-                    _recordname(nameobj,definitiveloc)
-                
-
-        
-        return json_response({'code':codematch, 'name_lang':namelangmatch, 'name':namematch } )
-
     except Exception as e:
         # import pdb; pdb.set_trace()   
         return HttpResponse(e, status=400)
     
 # return empty list    
     return HttpResponse('[]', status=200)
+    
+    
+def matchlocation(locobj,insert):
+    names = locobj['names']
+    typecode = locobj['locationType']    
+    # we'll build up lists of location ids for different matching strategies. The client will then have to decide how aggressive to be with accepting answers and dealing with inconsistencies.
+    match_ids = { 'code':[] , 'name_lang':[], 'name':[] } 
+    
+    # list of codes found
+    codes = []
+    
+    for nameobj in names: 
+        if not nameobj.has_key('name') :
+            # malformed 
+            raise ValueError('Missing element (name) in gazetteer object')
+        elif not nameobj.get('name') :
+            # skip a null entry - thats OK
+            continue
+        elif nameobj.get('namespace'):
+            codes.append( nameobj )
+            namelist = LocationName.objects.filter( name=nameobj['name'], namespace=nameobj['namespace'] )
+            # should be just one here - but we'll get a list of all found and check this later
+            for n in  namelist :
+                match_ids['code'].append(n.location.id)
+        elif nameobj.get('language'):
+            namelist = LocationName.objects.filter( name=nameobj['name'], language=nameobj['language'], location__locationType__term=typecode )    
+            if namelist :
+                for n in  namelist :
+                    match_ids['name_lang'].append(n.location.id)
+        else :
+            namelist = LocationName.objects.filter( name=nameobj['name'], location__locationType__term=typecode)    
+            if namelist :
+                for n in  namelist :
+                    match_ids['name'].append(n.location.id) 
+
+  
+    # now get details of locations from the ids, deduplicating as we go 
+    matches = {}
+    # we may make this controllable later
+
+    strategy = 'bestonly' 
+    
+    for matchtype in ["code", "name_lang", "name"] :
+        if match_ids.get( matchtype ) :
+            for locid in  match_ids[matchtype] :
+                if not matches.get(locid) :
+                    matches[locid] = {"matchtype":matchtype,"locobj":Location.objects.get(id=locid)}
+            if strategy == 'bestonly' and matches :
+                break
+    
+    # now perform basic validation:
+    count_codes = 0
+    codematch = [] 
+    namelangmatch = []
+    namematch=[]
+    definitiveloc = None
+    for loc in matches.keys() :
+        # count number of code matches - more than one will indicate some error
+        if matches[loc]['matchtype'] == 'code' :
+            count_codes += 1
+            codematch.append(_encodeLoc(loc,matches[loc]['locobj']))
+            definitiveloc = loc
+        elif matches[loc]['matchtype'] == 'name_lang' :  
+            namelangmatch.append(_encodeLoc(loc,matches[loc]['locobj']))
+        elif matches[loc]['matchtype'] == 'name' :  
+            namematch.append(_encodeLoc(loc,matches[loc]['locobj']))
+        # else :
+            # check 
+    
+    if count_codes > 1 :
+        raise ValueError('duplicate records found for feature identifiers  : '+ codematch) 
+    elif count_codes == 0 and insert and codes :
+        # there were codes provided but no match was made - so we can search for and insert this as a new location if missing
+        loc = _insertloc(locobj)
+        if loc :
+            definitiveloc = loc.id
+    
+    if insert and definitiveloc:
+        for nameobj in names:
+            if nameobj.get('name') :
+                _recordname(nameobj,definitiveloc)
+            
+
+
+    return {'code':codematch, 'name_lang':namelangmatch, 'name':namematch } 
+
+
 
 def _insertloc(locobj):
     """
@@ -192,7 +196,7 @@ def _insertloc(locobj):
         raise ValueError ('Invalid location type ' + locobj['locationType'])   
     
     defaultName = locobj['defaultName'] or locobj['names'][0] 
-    return Location.objects.create(defaultName=defaultName, locationType=locationType, latitude=locobj['latitude'] , longitude=locobj['latitude'] )
+    return Location.objects.create(defaultName=defaultName, locationType=locationType, latitude=locobj['latitude'] , longitude=locobj['longitude'] )
  
     
 def recordname(req, locid):

@@ -6,6 +6,7 @@ from django.core.urlresolvers import reverse
 import json
 from gazetteer.sources.abstractsource import AbstractSource, get_handler
 from gazetteer.models import GazSource,LocationTypeField,CodeFieldConfig,NameFieldConfig
+from gazetteer.views import matchlocation
 
 import requests
 
@@ -45,17 +46,18 @@ def harvestlayer(req, sourcetype, layer_name):
         for each feature, build gaz object - then use to match, insert if necessary,  and record name usages
         the layer set is definined in the settings - and hence the handler to extract the features - from shapefile, postgis etc.
     """
+    if req.GET.get('pdb') :
+        import pdb; pdb.set_trace()
+
     # get identified layer
     sourcelayer = _getlayer(sourcetype,layer_name)
     
-    sourcetype='mapstory'
+#    sourcetype='mapstory'
     # optional limit
     maxfeatures = req.GET.get('n')
     if maxfeatures :
         maxfeatures = int(maxfeatures)
-    if req.GET.get('pdb') :
-        import pdb; pdb.set_trace()
-
+ 
     endpoint =  req.build_absolute_uri(reverse('updateloc'))
     try:
         return HttpResponse ( status=201, mimetype="application/json", content= harvest(sourcetype, sourcelayer ,endpoint,maxfeatures) )
@@ -145,9 +147,12 @@ def _updategaz(f,config,endpoint):
         
         # now post to the transaction API
         # import pdb; pdb.set_trace() 
-        result = requests.post( endpoint,data=json.dumps(gazobj))
-        if result.status_code > 300 :
-            logger.error("Error response updating gazetteer %s" % result )
+        #result = requests.post( endpoint,data=json.dumps(gazobj))
+        #if result.status_code > 300 :
+        try:
+            matchlocation(gazobj, insert=True)
+        except Exception as e:
+            logger.error("Error response updating gazetteer %s" % e )
         if debugstr :
             # stop doing more calls now!
             return (True, 0, 0)
