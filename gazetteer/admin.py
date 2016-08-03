@@ -21,6 +21,7 @@ class LocationTypeInline(admin.StackedInline) :
     form = LocationTypeInlineForm
         
 class LocationAdmin(admin.ModelAdmin):
+    search_fields = ['locationType__term','locationname__name']
     inlines = [
         NameInline,
     ]
@@ -47,3 +48,4 @@ admin.site.register(GazSource);
 admin.site.register(GazSourceConfig,GazSourceConfigAdmin);
 admin.site.register(Location, LocationAdmin);
 admin.site.register(LocationName);
+admin.site.register(LinkSet);

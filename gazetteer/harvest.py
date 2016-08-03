@@ -34,9 +34,9 @@ def harvestsource(req, layerid):
     if req.GET.get('pdb') :
         import pdb; pdb.set_trace()
 
-    endpoint =  req.build_absolute_uri(reverse('updateloc'))
+    #endpoint =  req.build_absolute_uri(reverse('updateloc'))
     try:
-        return HttpResponse ( status=201, mimetype="application/json", content= harvest(sourcetype, sourcelayer ,endpoint,maxfeatures) )
+        return HttpResponse ( status=201, mimetype="application/json", content= harvest(sourcetype, sourcelayer ,maxfeatures) )
     except Exception as e:
         return HttpResponse( status=500, content=e)
   
@@ -58,13 +58,13 @@ def harvestlayer(req, sourcetype, layer_name):
     if maxfeatures :
         maxfeatures = int(maxfeatures)
  
-    endpoint =  req.build_absolute_uri(reverse('updateloc'))
+    #endpoint =  req.build_absolute_uri(reverse('updateloc'))
     try:
-        return HttpResponse ( status=201, mimetype="application/json", content= harvest(sourcetype, sourcelayer ,endpoint,maxfeatures) )
+        return HttpResponse ( status=201, mimetype="application/json", content= harvest(sourcetype, sourcelayer ,maxfeatures) )
     except Exception as e:
         return HttpResponse( status=500, content=e)
   
-def harvest(sourcetype, sourcelayer,endpoint,maxfeatures = None) :
+def harvest(sourcetype, sourcelayer,maxfeatures = None) :
 
     # get the harvest mappings for that layer - or throw 400 if not available
     harvestconfig = _getharvestconfig(sourcetype,sourcelayer)
@@ -83,7 +83,7 @@ def harvest(sourcetype, sourcelayer,endpoint,maxfeatures = None) :
         raise  Exception("Harvest handler not defined for datasource configured")
     try:
         for f in source().getfeatures(sourcelayer) :
-            (newloc, newnamecount, updatenamecount) =  _updategaz(f,harvestconfig,endpoint)
+            (newloc, newnamecount, updatenamecount) =  _updategaz(f,harvestconfig,sourcelayer)
             if newloc :
                 f_added += 1
             f_processed += 1
@@ -105,7 +105,7 @@ def _getlayerbyid(layerid):
     return GazSource.objects.get(id=layerid)
  
  
-def _updategaz(f,config,endpoint):
+def _updategaz(f,config,sourcelayer):
     """
         convert a feature to a gaz JSON structure and post it to the gazetteer transaction API
     """
@@ -140,17 +140,46 @@ def _updategaz(f,config,endpoint):
             elif namefield.language :
                 lang = namefield.language
             else :
-                lang = None 
-            gazobj['names'].append( {'name':f[namefield.field],'language':lang})
+                lang = None
+            
+            namerec = {} 
+            # names may have start and end dates...
+            if namefield.startDate :
+                if namefield.startDate.startswith(('"',"'")) :
+                    datestr = namefield.startDate[1:-1]
+                else:
+                    datestr = f[namefield.startDate]
+                namerec['startDate'] = datestr
+                namerec['startDateStrategy'] = namefield.startDateStrategy
+            if namefield.endDate :
+                if namefield.endDate.startswith(('"',"'")) :
+                    datestr = namefield.startDate[1:-1]
+                else:
+                    datestr = f[namefield.endDate]
+                namerec['endDate'] = datestr               
+                namerec['endDateStrategy'] = namefield.endDateStrategy
+                
+            if namefield.delimiter :
+                nameset = f[namefield.field].split(namefield.delimiter)
+            else:
+                nameset = [f[namefield.field]]
+            for name in nameset :
+                try:
+                    (name,lang) = name.split('@')
+                except :
+                    pass
+                namerec['name'] = name
+                namerec['language'] = lang
+                gazobj['names'].append( namerec )
             if namefield.as_default :
-                gazobj['defaultName'] = f[namefield.field]
+                gazobj['defaultName'] = nameset[0]
         
         # now post to the transaction API
         # import pdb; pdb.set_trace() 
         #result = requests.post( endpoint,data=json.dumps(gazobj))
         #if result.status_code > 300 :
         try:
-            matchlocation(gazobj, insert=True)
+            matchlocation(gazobj, sourcelayer, insert=True)
         except Exception as e:
             logger.error("Error response updating gazetteer %s" % e )
         if debugstr :

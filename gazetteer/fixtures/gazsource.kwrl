@@ -1,0 +1,14 @@
+@prefix skos: <http://www.w3.org/2004/02/skos/core#>
+@prefix void: <http://rdfs.org/ns/void#> 
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> 
+@prefix owl: <http://www.w3.org/2002/07/owl#> 
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> 
+@prefix dcterms: <http://purl.org/dc/terms/> 
+@prefix foaf: <http://xmlns.com/foaf/0.1/> 
+@prefix ms: <http://mapstory.org/def/resourcetypes/>
+@prefix msapi: <http://mapstory.org/def/api/>
+
+( $1 rdf:type ms:gazetteer ) -> ( $1 rdf:type void:Dataset )
+( $1 rdf:type ms:gazetteer ) -> ( $1 void:feature msapi:gazsource )
+

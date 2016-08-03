@@ -1,0 +1,74 @@
+
+[{
+		"pk" : 1,
+		"model" : "gazetteer.gazsourceconfig",
+		"fields" : {
+			"filter" : "",
+			"geom_field" : "",
+			"lat_field" : "lat",
+			"name" : "TM_WorldBoundaries",
+			"long_field" : "lon"
+		}
+	}, {
+		"pk" : 1,
+		"model" : "gazetteer.gazsource",
+		"fields" : {
+			"filter" : "",
+			"source" : "tm_world_borders_2005",
+			"config" : 1,
+			"source_type" : "geonode"
+		}
+	}, {
+		"pk" : 1,
+		"model" : "gazetteer.locationtypefield",
+		"fields" : {
+			"field" : "\"ADMIN\"",
+			"namespace" : "http://mapstory.org/def/featuretypes/gazetteer/",
+			"config" : 1
+		}
+	}, {
+		"pk" : 1,
+		"model" : "gazetteer.namefieldconfig",
+		"fields" : {
+			"language" : "en",
+			"as_default" : true,
+			"languageNamespace" : "",
+			"field" : "name",
+			"languageField" : "ss",
+			"config" : 1,
+			"name_type" : ""
+		}
+	}, {
+		"pk" : 1,
+		"model" : "gazetteer.codefieldconfig",
+		"fields" : {
+			"field" : "iso3",
+			"namespace" : "http://mapstory.org/id/countries/iso3",
+			"config" : 1
+		}
+	}, {
+		"pk" : 2,
+		"model" : "gazetteer.codefieldconfig",
+		"fields" : {
+			"field" : "iso2",
+			"namespace" : "http://mapstory.org/id/countries/iso2",
+			"config" : 1
+		}
+	}, {
+		"pk" : 3,
+		"model" : "gazetteer.codefieldconfig",
+		"fields" : {
+			"field" : "fips",
+			"namespace" : "http://mapstory.org/id/countries/un/fips",
+			"config" : 1
+		}
+	}, {
+		"pk" : 4,
+		"model" : "gazetteer.codefieldconfig",
+		"fields" : {
+			"field" : "un",
+			"namespace" : "http://mapstory.org/id/countries/un",
+			"config" : 1
+		}
+	}
+]

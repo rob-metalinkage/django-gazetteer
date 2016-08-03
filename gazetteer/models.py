@@ -1,6 +1,21 @@
 from django.db import models
 from skosxl.models import Concept
 from .settings import TARGET_NAMESPACE_FT 
+from django.utils.translation import ugettext_lazy as _
+import datetime
+
+# choices 
+DATE_STRATEGY_EARLIEST = 1 # choose earliest of provided and stored date
+DATE_STRATEGY_LATEST = 2 # choose latest of provided and stored date
+DATE_STRATEGY_ALWAYS = 3 # choose provided date and overwrite any stored date
+DATE_STRATEGY_IFNULL = 4 # choose provided date if no stored date available
+
+DATE_STRATEGY_CHOICES = (
+    (DATE_STRATEGY_EARLIEST, 'Earliest'),
+    (DATE_STRATEGY_LATEST, 'Latest'),
+    (DATE_STRATEGY_ALWAYS, 'Always use'),
+    (DATE_STRATEGY_IFNULL, 'Use if missing'),
+)
 
 # Create your models here.
 
@@ -18,51 +33,7 @@ from .settings import TARGET_NAMESPACE_FT
 #    def __unicode__(self):
 #        return ( self.code + ' = ' + self.label )
 
-# location type will be a SKOS Concept - this gives us direct access to the code - and indirect to any labels via Labels.objects.filter(concept = self.concept)
-class Location(models.Model):
-    defaultName = models.CharField(max_length=200)
-    locationType = models.ForeignKey(Concept, limit_choices_to={'scheme__uri' : TARGET_NAMESPACE_FT[0:-1]})
-    latitude = models.FloatField()
-    longitude = models.FloatField()
-    latMin = models.FloatField(blank=True,null=True)
-    latMax = models.FloatField(blank=True,null=True)
-    longMin = models.FloatField(blank=True,null=True)
-    longMax = models.FloatField(blank=True,null=True)
-    def __unicode__(self):
-        return ( self.defaultName  )
-
-class LocationName(models.Model):
-    location = models.ForeignKey(Location)
-    name = models.CharField(max_length=200)
-    language = models.CharField(max_length=2,help_text='language code e.g. <em>en</em>', blank=True, null=True)
-    namespace = models.URLField(blank=True,null=True)
-    nameValidStart = models.DateField(blank=True,null=True)
-    nameValidEnd = models.DateField(blank=True,null=True)   
-    def __unicode__(self):
-        if self.language :
-            return ( self.name + '@' + self.language )
-        elif self.namespace :
-            return (self.name + '(' + self.namespace + ')')
-        else :
-            return (self.name)
-            
-class RelType (models.Model):
-    code = models.CharField(max_length=20)
-    description = models.CharField(max_length=200)
-
-    def __unicode__(self):
-        return ( self.code  )
-
-class LocationRelation(models.Model):
-    source = models.ForeignKey(Location,related_name='source')
-    target = models.ForeignKey(Location,related_name='target')
-    rel = models.ForeignKey(RelType)
-        
-    def __unicode__(self):
-        return ( location1 + ' ' + relation + ' ' + location2 )
-
- 
-     
+    
     
 class GazSourceConfig(models.Model):
     """
@@ -90,16 +61,76 @@ class GazSource(models.Model):
 
     def __unicode__(self):
         return ( self.source_type + ' : ' + self.source )
-    
-class NameLink(models.Model):
-    """
-        records a link between a registered name and a map layer (by ID)
-    """
-    locname = models.ForeignKey(Location)
-    layerid = models.IntegerField()
-    
+# location type will be a SKOS Concept - this gives us direct access to the code - and indirect to any labels via Labels.objects.filter(concept = self.concept)
+class Location(models.Model):
+    defaultName = models.CharField(max_length=200)
+    locationType = models.ForeignKey(Concept, limit_choices_to={'scheme__uri' : TARGET_NAMESPACE_FT[0:-1]})
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+#    latMin = models.FloatField(blank=True,null=True)
+#    latMax = models.FloatField(blank=True,null=True)
+#    longMin = models.FloatField(blank=True,null=True)
+#    longMax = models.FloatField(blank=True,null=True)
     def __unicode__(self):
-        return ( locname + ' in ' + layerid )
+        return ( self.defaultName  )
+
+class LocationName(models.Model):
+    location = models.ForeignKey(Location)
+    name = models.CharField(max_length=200)
+    language = models.CharField(max_length=2,help_text=_(u'language code e.g. <em>en</em>'), blank=True, null=True)
+ 
+    namespace = models.URLField(blank=True,null=True)
+    startDate = models.IntegerField(blank=True,null=True)
+    endDate = models.IntegerField(blank=True,null=True)
+    nameUsed = models.ManyToManyField(GazSource,blank=True,null=True)
+    
+     
+        
+        
+    def __unicode__(self):
+        if self.language :
+            return ( self.name + '@' + self.language )
+        elif self.namespace :
+            return (self.name + '(' + self.namespace + ')')
+        else :
+            return (self.name)
+
+def to_date(date):
+    ''' 
+        convert a date string to whatever the model supports 
+    '''
+    if not date:
+        return None
+    elif type(date) == int :
+        return date
+    elif type(date) == float :
+        return int(date)
+    elif type(date) == datetime.date:
+        return date.year
+    elif type(date) in (str, unicode) :
+        try:
+            return int(date)
+        except:
+            pass
+    return 666
+            
+class RelType (models.Model):
+    code = models.CharField(max_length=20)
+    description = models.CharField(max_length=200)
+
+    def __unicode__(self):
+        return ( self.code  )
+
+class LocationRelation(models.Model):
+    source = models.ForeignKey(Location,related_name='source')
+    target = models.ForeignKey(Location,related_name='target')
+    rel = models.ForeignKey(RelType)
+        
+    def __unicode__(self):
+        return ( location1 + ' ' + relation + ' ' + location2 )
+
+ 
+ 
 
 class LocationTypeField(models.Model):
     """
@@ -117,10 +148,21 @@ class NameFieldConfig(models.Model):
     """
     config = models.ForeignKey(GazSourceConfig)
     field = models.CharField(max_length=20,help_text="Name of field containing a name in data source - using OGR conventions")
+    delimiter = models.CharField(max_length=5,help_text=_(u'delimiter if multiple names in a field e.g. <em>,</em>'),blank=True,null=True)
     language = models.CharField(max_length=20, null=True,blank=True, help_text="language code, if a constant")
     languageField = models.CharField(max_length=20,blank=True,help_text="Name of field containing a language identifier for this name - using OGR conventions") 
     languageNamespace = models.CharField(max_length=200,null=True,blank=True, help_text="Namespace of provided language field, if set provide SKOS translation to standard language code using this namespace" )
-    name_type = models.CharField(max_length=200,null=True,blank=True, help_text="name type")
+    startDate = models.CharField(max_length=30,null=True,blank=True, help_text="Start date field or expression")
+    startDateNull = models.CharField(max_length=30,null=True,blank=True, help_text="Null value to ignore")
+    startDateStrategy = models.PositiveSmallIntegerField( _(u'start_date processing strategy'),
+                                                    choices=DATE_STRATEGY_CHOICES, 
+                                                    default=DATE_STRATEGY_EARLIEST)
+    endDate = models.CharField(max_length=30,null=True,blank=True, help_text="Start date field or expression")
+    endDateNull = models.CharField(max_length=30,null=True,blank=True, help_text="Null value to ignore")
+    endDateStrategy = models.PositiveSmallIntegerField( _(u'end_date processing strategy'),
+                                                    choices=DATE_STRATEGY_CHOICES, 
+                                                    default=DATE_STRATEGY_LATEST)
+    nameType = models.CharField(max_length=200,null=True,blank=True, help_text="Name type")
     as_default = models.BooleanField(help_text="use this as default label if provided")
 
   
@@ -132,3 +174,17 @@ class CodeFieldConfig(models.Model):
     field = models.CharField(max_length=20, help_text="Name of field containing a code in data source - using OGR conventions")
     namespace = models.URLField(blank=True,null=True)
   
+class LinkSet(models.Model):
+    """
+        container to hold annotated summaries of links between different feature identifiers, by namespace
+    """
+    label = models.TextField(max_length = 100,blank=True,null=True,help_text="Label")
+    ns1 = models.CharField(max_length=500,help_text="Source namespace")
+    ns2 = models.CharField(max_length=500,help_text="Target namespace")
+    description = models.TextField(max_length = 1000,blank=True,null=True,help_text="Description")
+    count_sources = models.IntegerField(verbose_name="number of distinct data sources containing this cross reference")
+    count_links = models.IntegerField(verbose_name="number of distinct cross references")
+    
+    def __unicode__(self):
+        return ( "".join( (self.ns1[self.ns1.rindex('/')+1:], ' -> ' , self.ns2[self.ns2.rindex('/')+1:] , ' (', str(self.count_links), ')'  ) ) )
+            

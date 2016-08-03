@@ -4,7 +4,7 @@ from django.db.models import F
 from django.http import HttpResponse, Http404
 from geonode.utils import json_response
 import json
-from gazetteer.models import Location, LocationName
+from gazetteer.models import Location, LocationName, to_date, DATE_STRATEGY_EARLIEST,DATE_STRATEGY_LATEST,DATE_STRATEGY_ALWAYS,DATE_STRATEGY_IFNULL
 from skosxl.models import Notation, Concept
 
 from django.views.decorators.csrf import csrf_exempt
@@ -14,6 +14,8 @@ from .settings import TARGET_NAMESPACE_FT
 # just throw us into a debugger in the environment.
 def debug(req) :
     import pdb; pdb.set_trace()
+    from gazetteer.linksets import genLinkSets
+    genLinkSets()
     
 
 @csrf_exempt
@@ -43,10 +45,10 @@ def _encodeName(n):
     nprops = {'name':n.name, 'language':n.language }
     if n.namespace :
         nprops['namespace'] = n.namespace
-    if n.nameValidStart :
-        nprops['nameValidStart'] = n.nameValidStart
-    if n.nameValidEnd :
-        nprops['nameValidEnd'] = n.nameValidEnd
+    if n.startDate :
+        nprops['startDate'] = n.startDate
+    if n.endDate :
+        nprops['endDate'] = n.endDate
     return nprops
 
 @csrf_exempt
@@ -74,7 +76,7 @@ def _matchloc(req,insert):
     try:
         if req.method == 'POST':
             locobj = json.loads(req.body)
-            return json_response(matchlocation(locobj),insert)
+            return json_response(matchlocation(locobj,sourcelayer=None,insert=insert))
         elif req.method == 'GET':
             if not req.GET.get('namespace') and req.GET.get('name').startswith('http') :
                 names = [{ 'name':req.GET.get('name'), 'namespace': req.GET.get('name')[0:req.GET.get('name').rfind('/')+1] }]
@@ -98,7 +100,7 @@ def _matchloc(req,insert):
     return HttpResponse('[]', status=200)
     
     
-def matchlocation(locobj,insert):
+def matchlocation(locobj,sourcelayer, insert):
     names = locobj['names']
     typecode = locobj['locationType']    
     # we'll build up lists of location ids for different matching strategies. The client will then have to decide how aggressive to be with accepting answers and dealing with inconsistencies.
@@ -176,7 +178,7 @@ def matchlocation(locobj,insert):
     if insert and definitiveloc:
         for nameobj in names:
             if nameobj.get('name') :
-                _recordname(nameobj,definitiveloc)
+                _recordname(nameobj,definitiveloc,sourcelayer)
             
 
 
@@ -195,7 +197,7 @@ def _insertloc(locobj):
         
         raise ValueError ('Invalid location type ' + locobj['locationType'])   
     
-    defaultName = locobj['defaultName'] or locobj['names'][0] 
+    defaultName = locobj.get('defaultName') or locobj['names'][0].get('name') 
     return Location.objects.create(defaultName=defaultName, locationType=locationType, latitude=locobj['latitude'] , longitude=locobj['longitude'] )
  
     
@@ -214,16 +216,18 @@ def recordname(req, locid):
         HttpResponse('method not supported', status=404) 
 #    pdb.set_trace()
     try:
-        status = _recordname(nameobj,locid)
+        status = _recordname(nameobj,locid,None)
     except Exception as e:
         return HttpResponse(e, status=400)
             
     return HttpResponse(status, status=200)
     
-def _recordname(nameobj,locid) :
+def _recordname(nameobj,locid,sourcelayer) :
     loc = Location.objects.get(id=locid)
     status = 'got loc'
     # import pdb; pdb.set_trace()
+    obj = None
+
     if not nameobj.get('name') :
         return 'invalid name object - no name element defined'
     elif nameobj.get('namespace') :
@@ -235,21 +239,67 @@ def _recordname(nameobj,locid) :
                     raise ValueError('conflicting names {0} {1} found for namespace {2}'.format((nameobj['name'],  nn.name ,nameobj['namespace'] )))
     elif not nameobj.get('language') :
         names = LocationName.objects.filter( location = loc, name=nameobj['name'] )
-        #if found then had a name already so ignore this unqualified option
+        #if found then had a name already fall through to update dates if necessary
         if names :
-            return 'name exists, ignoring'
-    else :
+            (obj,created) = (names[0], False)
+    else : # look for one with language not set
         names = LocationName.objects.filter( location = loc, name=nameobj['name'] , language=None)
         if names :
-            # merge this record with existing one - refine to set language - later add temporal info
-            for nn in names :
-                nn.language = nameobj.get('language')
-                nn.save()
-                return 'updated assumed language for matching name'
+            (obj,created) = (names[0], False)
+            obj.language = nameobj.get('language')
+            
+    # have found one with missing language if necessary.
+    if not obj :
+        (obj, created) = LocationName.objects.get_or_create( location = loc, name=nameobj['name'], language=nameobj.get('language'),namespace=nameobj.get('namespace'), defaults = {} )
     
-    (obj, created) = LocationName.objects.get_or_create( location = loc, name=nameobj['name'], language=nameobj.get('language'),namespace=nameobj.get('namespace'), defaults = nameobj )
     status = 'location created ' + str(created)
+
+    if not created and ( nameobj.get('startDate') or nameobj.get('endDate') ) :    # update dates 
+        try:
+            date = nameobj.get('startDate')
+ 
+            if date:
+                recdate = getattr(obj,'startDate')
+                strategy = nameobj['startDateStrategy']
+                date = to_date(date)
+                if not recdate or strategy == DATE_STRATEGY_ALWAYS:
+                    obj.startDate = date
+                elif strategy == DATE_STRATEGY_EARLIEST :
+                    if date_less_than ( date, recdate) :
+                        obj.startDate = date
+                elif strategy == DATE_STRATEGY_LATEST :
+                    if not date_less_than ( date, recdate) :
+                        obj.startDate = date    
+
+            date = nameobj.get('endDate')
+            if date:
+                recdate = getattr(obj,'endDate')
+                strategy = nameobj['endDateStrategy']
+                date = to_date(date)
+                if not recdate or strategy == DATE_STRATEGY_ALWAYS:
+                    obj.endDate = date
+                elif strategy == DATE_STRATEGY_EARLIEST :
+                    if date_less_than ( date, recdate) :
+                        obj.endDate = date
+                elif strategy == DATE_STRATEGY_LATEST :
+                    if not date_less_than ( date, recdate) :
+                        obj.endDate = date 
+        except Exception as e:
+            status = status + ' (with error determining date values) '
+            
+    if sourcelayer :
+        obj.nameUsed.add(sourcelayer)
+        obj.save()
     if not created:
         # obj.extra_field = 'some_val'
         status =  'updating counts for ' + F( obj.name) 
     return status
+
+
+    
+def date_less_than( d1, d2 ) :
+    """
+        compare two dates - may be complex fuzzy dates (like c. 500BC)
+    """
+    
+    return d1 < d2 
