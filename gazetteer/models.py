@@ -89,7 +89,7 @@ class LocationName(models.Model):
         
     def __unicode__(self):
         if self.language :
-            return ( self.name + '@' + self.language )
+            return ( u'@'.join((self.name,self.language) ) )
         elif self.namespace :
             return (self.name + '(' + self.namespace + ')')
         else :
@@ -186,5 +186,5 @@ class LinkSet(models.Model):
     count_links = models.IntegerField(verbose_name="number of distinct cross references")
     
     def __unicode__(self):
-        return ( "".join( (self.ns1[self.ns1.rindex('/')+1:], ' -> ' , self.ns2[self.ns2.rindex('/')+1:] , ' (', str(self.count_links), ')'  ) ) )
+        return ( "".join( (self.ns1, ' -> ' , self.ns2 , ' (', str(self.count_links), ')'  ) ) )
             
