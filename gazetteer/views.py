@@ -11,15 +11,49 @@ from django.views.decorators.csrf import csrf_exempt
 
 from .settings import TARGET_NAMESPACE_FT 
 
+
+FINDPARAMS = { 'name': 'locationname__name__iexact' ,
+    'namestart' : 'locationname__name__istartswith' ,
+    'lang' : 'locationname__language',
+    'code' : 'locationname__name' ,
+    'namespace' : 'locationname__namespace' ,
+    }
+    
 # just throw us into a debugger in the environment.
 def debug(req) :
     import pdb; pdb.set_trace()
-    from gazetteer.linksets import genLinkSets
-    genLinkSets()
-    
 
+
+def genlinksets(req) :
+    from gazetteer.linksets import genLinkSets
+    return HttpResponse(genLinkSets())    
+
+def loadconfigs(req) :
+    from gazetteer.fixtures import loadconfigs
+    return HttpResponse(loadconfigs())    
 @csrf_exempt
 
+
+def findloc(req):
+    """
+        Get a location and its associtaed nested properties based on an id.
+    """
+    if req.GET.get('pdb') :
+        import pdb; pdb.set_trace()
+    filters = {}
+    for param in FINDPARAMS.keys() :
+        value = req.GET.get(param)
+        if value:
+            filters[ FINDPARAMS[param ] ] = value
+    try:
+        l = Location.objects.filter(**filters)
+    except Exception as e:
+        return HttpResponse(e,status=500)
+    if len(l) == 0 :
+        raise Http404
+#    pdb.set_trace()  
+    return json_response(_encodeLoc(l[0].id,l[0]))
+    
 def getloc(req, locid):
     """
         Get a location and its associtaed nested properties based on an id.
@@ -123,12 +157,12 @@ def matchlocation(locobj,sourcelayer, insert):
             for n in  namelist :
                 match_ids['code'].append(n.location.id)
         elif nameobj.get('language'):
-            namelist = LocationName.objects.filter( name=nameobj['name'], language=nameobj['language'], location__locationType__term=typecode )    
+            namelist = LocationName.objects.filter( name=nameobj['name'].decode('unicode_escape'), language=nameobj['language'], location__locationType__term=typecode )    
             if namelist :
                 for n in  namelist :
                     match_ids['name_lang'].append(n.location.id)
         else :
-            namelist = LocationName.objects.filter( name=nameobj['name'], location__locationType__term=typecode)    
+            namelist = LocationName.objects.filter( name=nameobj['name'].decode('unicode_escape'), location__locationType__term=typecode) 
             if namelist :
                 for n in  namelist :
                     match_ids['name'].append(n.location.id) 
@@ -178,6 +212,8 @@ def matchlocation(locobj,sourcelayer, insert):
     if insert and definitiveloc:
         for nameobj in names:
             if nameobj.get('name') :
+                if not nameobj.get('namespace'):
+                    nameobj['name'] = nameobj['name'].decode('unicode_escape')
                 _recordname(nameobj,definitiveloc,sourcelayer)
             
 
