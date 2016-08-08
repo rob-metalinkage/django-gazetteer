@@ -27,7 +27,7 @@ def load_ft_mappings() :
     (mr,created) = MapRelation.objects.get_or_create(match_type=1, origin_concept=ft2 , uri="".join((TARGET_NAMESPACE_FT,"PPL")))
     (mr,created) = MapRelation.objects.get_or_create(match_type=1, origin_concept=ft3 , uri="".join((TARGET_NAMESPACE_FT,"PPL")))
 
-def load_config(test_sample) :
+def load_config() :
     try:
         GazSourceConfig.objects.filter(name="NGA GNS gazetteer").delete()
     except:
@@ -41,7 +41,7 @@ def load_config(test_sample) :
     
     CodeFieldConfig.objects.create(config=config,field="ufi",namespace="http://geonames.nga.mil/id/")
     
-    (s,created) = GazSource.objects.get_or_create(source=test_sample, config=config, source_type="mapstory")
+    (s,created) = GazSource.objects.get_or_create(source="tu_sample", config=config, source_type="mapstory")
     print (s,created)
 
 """

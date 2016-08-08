@@ -27,7 +27,7 @@ def load_ft_mappings() :
     (mr,created) = MapRelation.objects.get_or_create(match_type=1, origin_concept=ft2 , uri="".join((TARGET_NAMESPACE_FT,"PPL")))
     (mr,created) = MapRelation.objects.get_or_create(match_type=1, origin_concept=ft3 , uri="".join((TARGET_NAMESPACE_FT,"PPL")))
 
-def load_config(test_sample) :
+def load_config() :
     try:
         GazSourceConfig.objects.filter(name="Mapstory naming events special format").delete()
     except:
