@@ -9,6 +9,8 @@ from .settings import TARGET_NAMESPACE_FT
 # works for Dango > 1.6 
 class NameInline(admin.TabularInline):
     model = LocationName
+    readonly_fields = ['nameUsed', 'namespace']
+    extra = 0
 
     
 class LocationTypeInlineForm(forms.ModelForm):
