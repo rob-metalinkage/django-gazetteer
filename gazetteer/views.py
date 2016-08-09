@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.db import transaction
 from django.db.models import F
+from itertools import islice
 from django.http import HttpResponse, Http404
 from geonode.utils import json_response
 import json
@@ -29,8 +30,7 @@ def genlinksets(req) :
     return HttpResponse(genLinkSets())    
 
 def loadconfigs(req) :
-    from gazetteer.fixtures import loadconfigs
-    return HttpResponse(loadconfigs())    
+    return HttpResponse(gazetteer.fixtures.loadconfigs())    
 @csrf_exempt
 
 
@@ -38,21 +38,42 @@ def findloc(req):
     """
         Get a location and its associtaed nested properties based on an id.
     """
+    max=100
+    page = 1
+    try:
+        max = int(req.GET.get('max'))
+        if max <1 or max > 1000 :
+            return HttpResponse('Max values out of range (1-1000)',status=500)
+    except:
+        if req.GET.get('max'):
+            return  HttpResponse('Invalid integer for max',status=500)
+    try:
+        page = int(req.GET.get('page'))
+        if page < 1  :
+            return  HttpResponse('Page values out of range 1-',status=500)
+    except:
+        if req.GET.get('page'):
+            return  HttpResponse('Invalid integer for page',status=500) 
+            
     if req.GET.get('pdb') :
         import pdb; pdb.set_trace()
     filters = {}
     for param in FINDPARAMS.keys() :
         value = req.GET.get(param)
         if value:
-            filters[ FINDPARAMS[param ] ] = value
+            try:
+                filters[ FINDPARAMS[param ] ] = value.decode('unicode_escape')
+            except:
+                filters[ FINDPARAMS[param ] ] = value
+    if len(filters) == 0 :
+        return HttpResponse('No valid query parameters found %s' % str( FINDPARAMS.keys()) ,status=500)
     try:
         l = Location.objects.filter(**filters)
     except Exception as e:
         return HttpResponse(e,status=500)
-    if len(l) == 0 :
-        raise Http404
-#    pdb.set_trace()  
-    return json_response(_encodeLoc(l[0].id,l[0]))
+ 
+#    pdb.set_trace()
+    return json_response(_encodeLocList(l,max,page))
     
 def getloc(req, locid):
     """
@@ -65,6 +86,13 @@ def getloc(req, locid):
 #    pdb.set_trace()  
     return json_response(_encodeLoc(locid,l))
 
+def _encodeLocList(loclist,max=100,page=1):    
+    foundlist = []
+    count = 0
+    for (count,location) in enumerate(islice(loclist,(page-1)*max, page*max),start=1):
+        foundlist.append(_encodeLoc(location.id,location))
+    return { 'page':page , 'count':count, 'itemsPerPage':max, 'results':foundlist }
+    
 def _encodeLoc(locid,l):    
     names = LocationName.objects.filter(location=locid)
     return {'type':l.locationType.term,'locid':locid, 'latitude':l.latitude, 'longitude':l.longitude, 'defaultName':l.defaultName, 'names':_encodeNames(names)}
@@ -76,7 +104,9 @@ def _encodeNames(names):
     return namelist
 
 def _encodeName(n):
-    nprops = {'name':n.name, 'language':n.language }
+    nprops = {'name':n.name }
+    if n.language :
+        nprops['language'] = n.language
     if n.namespace :
         nprops['namespace'] = n.namespace
     if n.startDate :
@@ -150,19 +180,24 @@ def matchlocation(locobj,sourcelayer, insert):
         elif not nameobj.get('name') :
             # skip a null entry - thats OK
             continue
-        elif nameobj.get('namespace'):
+        try:
+            name_uni = nameobj['name'].decode('unicode_escape')
+        except:
+            name_uni = nameobj['name']
+            
+        if nameobj.get('namespace'):
             codes.append( nameobj )
-            namelist = LocationName.objects.filter( name=nameobj['name'], namespace=nameobj['namespace'] )
+            namelist = LocationName.objects.filter( name=name_uni, namespace=nameobj['namespace'] )
             # should be just one here - but we'll get a list of all found and check this later
             for n in  namelist :
                 match_ids['code'].append(n.location.id)
         elif nameobj.get('language'):
-            namelist = LocationName.objects.filter( name=nameobj['name'].decode('unicode_escape'), language=nameobj['language'], location__locationType__term=typecode )    
+            namelist = LocationName.objects.filter( name=name_uni, language=nameobj['language'], location__locationType__term=typecode )    
             if namelist :
                 for n in  namelist :
                     match_ids['name_lang'].append(n.location.id)
         else :
-            namelist = LocationName.objects.filter( name=nameobj['name'].decode('unicode_escape'), location__locationType__term=typecode) 
+            namelist = LocationName.objects.filter( name=name_uni, location__locationType__term=typecode) 
             if namelist :
                 for n in  namelist :
                     match_ids['name'].append(n.location.id) 
@@ -213,7 +248,10 @@ def matchlocation(locobj,sourcelayer, insert):
         for nameobj in names:
             if nameobj.get('name') :
                 if not nameobj.get('namespace'):
-                    nameobj['name'] = nameobj['name'].decode('unicode_escape')
+                    try:
+                        nameobj['name'] = nameobj['name'].decode('unicode_escape')
+                    except:
+                        pass # wasnt escaped unicode after all
                 _recordname(nameobj,definitiveloc,sourcelayer)
             
 
