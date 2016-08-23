@@ -223,6 +223,7 @@ def matchlocation(locobj,sourcelayer, insert):
     namelangmatch = []
     namematch=[]
     definitiveloc = None
+    newloc = False
     for loc in matches.keys() :
         # count number of code matches - more than one will indicate some error
         if matches[loc]['matchtype'] == 'code' :
@@ -243,7 +244,10 @@ def matchlocation(locobj,sourcelayer, insert):
         loc = _insertloc(locobj)
         if loc :
             definitiveloc = loc.id
+        newloc = True
     
+    newnames = 0
+    changednames = 0
     if insert and definitiveloc:
         for nameobj in names:
             if nameobj.get('name') :
@@ -252,11 +256,15 @@ def matchlocation(locobj,sourcelayer, insert):
                         nameobj['name'] = nameobj['name'].decode('unicode_escape')
                     except:
                         pass # wasnt escaped unicode after all
-                _recordname(nameobj,definitiveloc,sourcelayer)
+                (created,updated) = _recordname(nameobj,definitiveloc,sourcelayer)
+                if created :
+                    newnames += 1
+                if updated :
+                    changednames +=1
             
 
 
-    return {'code':codematch, 'name_lang':namelangmatch, 'name':namematch } 
+    return  {'newloc':newloc, 'newnames':newnames, 'changednames':changednames, 'code':codematch, 'name_lang':namelangmatch, 'name':namematch } 
 
 
 
@@ -290,15 +298,16 @@ def recordname(req, locid):
         HttpResponse('method not supported', status=404) 
 #    pdb.set_trace()
     try:
-        status = _recordname(nameobj,locid,None)
+        (created,updated) = _recordname(nameobj,locid,None)
     except Exception as e:
         return HttpResponse(e, status=400)
             
-    return HttpResponse(status, status=200)
+    return HttpResponse( "Created %s, Updated %s" % (created,updated), status=200)
     
 def _recordname(nameobj,locid,sourcelayer) :
     loc = Location.objects.get(id=locid)
     status = 'got loc'
+    updated = False
     # import pdb; pdb.set_trace()
     obj = None
 
@@ -321,6 +330,7 @@ def _recordname(nameobj,locid,sourcelayer) :
         if names :
             (obj,created) = (names[0], False)
             obj.language = nameobj.get('language')
+            updated = True
             
     # have found one with missing language if necessary.
     if not obj :
@@ -328,7 +338,7 @@ def _recordname(nameobj,locid,sourcelayer) :
     
     status = 'location created ' + str(created)
 
-    if not created and ( nameobj.get('startDate') or nameobj.get('endDate') ) :    # update dates 
+    if ( nameobj.get('startDate') or nameobj.get('endDate') ) :    # update dates 
         try:
             date = nameobj.get('startDate')
  
@@ -338,12 +348,15 @@ def _recordname(nameobj,locid,sourcelayer) :
                 date = to_date(date)
                 if not recdate or strategy == DATE_STRATEGY_ALWAYS:
                     obj.startDate = date
+                    updated = True
                 elif strategy == DATE_STRATEGY_EARLIEST :
                     if date_less_than ( date, recdate) :
                         obj.startDate = date
+                        updated = True
                 elif strategy == DATE_STRATEGY_LATEST :
                     if not date_less_than ( date, recdate) :
-                        obj.startDate = date    
+                        obj.startDate = date
+                        updated = True
 
             date = nameobj.get('endDate')
             if date:
@@ -352,22 +365,28 @@ def _recordname(nameobj,locid,sourcelayer) :
                 date = to_date(date)
                 if not recdate or strategy == DATE_STRATEGY_ALWAYS:
                     obj.endDate = date
+                    updated = True
                 elif strategy == DATE_STRATEGY_EARLIEST :
                     if date_less_than ( date, recdate) :
                         obj.endDate = date
+                        updated = True
                 elif strategy == DATE_STRATEGY_LATEST :
                     if not date_less_than ( date, recdate) :
-                        obj.endDate = date 
+                        obj.endDate = date
+                        updated = True                        
         except Exception as e:
             status = status + ' (with error determining date values) '
-            
+    if created :
+        # ignore updates..
+        updated = False
+        
     if sourcelayer :
         obj.nameUsed.add(sourcelayer)
         obj.save()
     if not created:
         # obj.extra_field = 'some_val'
         status =  'updating counts for ' + F( obj.name) 
-    return status
+    return (created,updated)
 
 
     
