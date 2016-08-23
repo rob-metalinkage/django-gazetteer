@@ -11,6 +11,7 @@ urlpatterns = patterns(
     url(r'location/updateloc$', updateloc, name='updateloc'),
     url(r'debug$', debug, name='debug'),
     url(r'gen/linksets$', genlinksets, name='genlinksets'),
+    url(r'manage/loadconfigs$', loadconfigs, name='loadconfigs'),
     url(r'harvest/(?P<layerid>\d+)$',harvestsource,name='harvestsource'),
     url(r'harvest/(?P<sourcetype>[\w\d_]+)/(?P<layer_name>.+)$',harvestlayer,name='harvestlayer'),
 
