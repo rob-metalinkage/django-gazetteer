@@ -83,19 +83,19 @@ def harvest(sourcetype, sourcelayer,maxfeatures = None) :
         raise  Exception("Harvest handler not defined for datasource configured")
     try:
         for f in source().getfeatures(sourcelayer) :
-            (newloc, newnamecount, updatenamecount) =  _updategaz(f,harvestconfig,sourcelayer)
-            if newloc :
+            updates =  _updategaz(f,harvestconfig,sourcelayer)
+            if updates['newloc'] :
                 f_added += 1
             f_processed += 1
-            newnames += newnamecount
-            updatednames += updatenamecount
+            newnames += updates['newnames']
+            updatednames += updates['changednames']
             if maxfeatures and f_processed >= maxfeatures :
                 break
     except Exception as e:
         logger.error( "Gazetteer harvest failed during - layer = %s, error = %s" % (str(sourcelayer), e) )
         return e
             
-    return "layer %s features %s, added %s" % (str(sourcelayer) , f_processed , f_added )
+    return "layer %s features %s, added %s , namesadded %s, namesupdated %s" % (str(sourcelayer) , f_processed , f_added , newnames, updatednames )
 
 def _getlayer(sourcetype,layer):
     return GazSource.objects.get(source_type=sourcetype, source=layer)
@@ -109,7 +109,7 @@ def _updategaz(f,config,sourcelayer):
     """
         convert a feature to a gaz JSON structure and post it to the gazetteer transaction API
     """
-    debugstr=''
+    (newloc,newname,changedname) = (False,0,0)
     try:
         gazobj = {}
         ltfield = LocationTypeField.objects.get(config=config)
@@ -179,17 +179,14 @@ def _updategaz(f,config,sourcelayer):
         #result = requests.post( endpoint,data=json.dumps(gazobj))
         #if result.status_code > 300 :
         try:
-            matchlocation(gazobj, sourcelayer, insert=True)
+            updates = matchlocation(gazobj, sourcelayer, insert=True)
         except Exception as e:
             logger.error("Error response updating gazetteer %s" % e )
-        if debugstr :
-            # stop doing more calls now!
-            return (True, 0, 0)
     except Exception as e:
         logger.error("Error updating gazetteer %s " % e )
         raise e
         
-    return (True, 0, 0)
+    return updates
 
 def _lookup_skos_notation_map( tns, ns_localft, term ) :
     from skosxl.models import Notation, Concept, MapRelation

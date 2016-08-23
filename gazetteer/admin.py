@@ -28,6 +28,10 @@ class LocationAdmin(admin.ModelAdmin):
         NameInline,
     ]
 
+class LocationNameAdmin(admin.ModelAdmin):
+    search_fields = ['name']
+    list_filter = ('language', 'nameUsed', 'namespace')
+    
 class NameFieldConfigInline(admin.TabularInline):
     model = NameFieldConfig
     extra = 1
@@ -49,5 +53,5 @@ class GazSourceConfigAdmin(admin.ModelAdmin):
 admin.site.register(GazSource);
 admin.site.register(GazSourceConfig,GazSourceConfigAdmin);
 admin.site.register(Location, LocationAdmin);
-admin.site.register(LocationName);
+admin.site.register(LocationName, LocationNameAdmin);
 admin.site.register(LinkSet);
