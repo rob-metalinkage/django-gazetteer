@@ -138,7 +138,7 @@ class LocationTypeField(models.Model):
     """
     config = models.ForeignKey(GazSourceConfig,unique=True)
     field = models.CharField(max_length=20, help_text="Name of field containing a location type code in data source - using OGR conventions. A constant literal value may be provided in quotes")
-    namespace = models.URLField(blank=True,null=True, help_text="leave blank only if the field contains a fully qualified URI")
+    namespace = models.URLField(blank=True,null=True, default=TARGET_NAMESPACE_FT, help_text="leave blank only if the field contains a fully qualified URI")
 
   
         

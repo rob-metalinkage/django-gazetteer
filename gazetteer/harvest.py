@@ -104,7 +104,10 @@ def _getlayer(sourcetype,layer):
 def _getlayerbyid(layerid):
     return GazSource.objects.get(id=layerid)
  
- 
+def _getPoint(geom) :
+    print type(geom)
+    return (0,0)
+    
 def _updategaz(f,config,sourcelayer):
     """
         convert a feature to a gaz JSON structure and post it to the gazetteer transaction API
@@ -125,15 +128,26 @@ def _updategaz(f,config,sourcelayer):
             
             
         gazobj['locationType'] = loc_type_normalised
-        gazobj['latitude'] = f[config.lat_field]
-        gazobj['longitude'] = f[config.long_field]
+        try:
+            gazobj['latitude'] = f[config.lat_field]
+            gazobj['longitude'] = f[config.long_field]
+        except:
+            pass  # not critical we have these
+            
+        try:
+            (lat,long) = _getPoint(f[config.geom_field])
+        except:
+            pass
         #gazobj['defaultName'] = f[config['defaultNameField']]
         
     
         # now record all the names - the API wont insert unless it finds a code, and no matches for that code.
         gazobj['names'] = []
         for namefield in CodeFieldConfig.objects.filter(config=config) :
-            gazobj['names'].append( {'name':f[namefield.field],'namespace':namefield.namespace})
+            if namefield.field.startswith(("'",'"')) :
+                gazobj['names'].append( {'name': namefield.field[1:-1],'namespace':namefield.namespace})
+            else :
+                gazobj['names'].append( {'name':f[namefield.field],'namespace':namefield.namespace})
         for namefield in NameFieldConfig.objects.filter(config=config) :
             if namefield.languageField and f.get(namefield.languageField) :
                 lang = f[namefield.languageField]
