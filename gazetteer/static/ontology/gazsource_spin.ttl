@@ -1,0 +1,39 @@
+@base <http://www.w3.org/2004/02/skos/core>.
+
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+@prefix xml: <http://www.w3.org/XML/1998/namespace>.
+@prefix dcterms: <http://purl.org/dc/terms/>.
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix skos: <http://www.w3.org/2004/02/skos/core#>.
+
+@prefix sp: <http://spinrdf.org/sp#> .
+@prefix spin: <http://spinrdf.org/spin#> .
+@prefix spl: <http://spinrdf.org/spl#> .
+
+
+@prefix lid: <http://id.sirf.net/def/schema/lid/> .
+
+@prefix void: <http://rdfs.org/ns/void#> .
+
+@prefix mapstory: <http://mapstory.org/def/resourcetypes/> .
+
+# import lid_metamodel, void, cube...
+
+# spin rules for SKOS closures
+mapstory:gazsource a rdfs:Class;
+	rdfs:subClassOf lid:lidset ;
+	# spin rule to trigger RDFS entailment - Profiles are an RDFS class, datasets maybe described as instances of such profiles
+	rdfs:label "A data source containing location names collated in the mapstory linked data gazetteer" ;
+	rdfs:comment "model allows inferencing of what links to resources are possible using the mappings from the source to the gazetteer";
+
+.
+
+mapstory:sourceView  a void:Technnical Feature;
+	lid:viewName "mapstory:source" ;
+	dcterms:hasFormat <http://purl.org/NET/mediatypes/application/rdf+xml>, 
+                            <http://purl.org/NET/mediatypes/text/html>, 
+                            <http://purl.org/NET/mediatypes/application/json>, 
+                            <http://purl.org/NET/mediatypes/application/rdf+ttl> ,
+                        <http://purl.org/NET/mediatypes/application/xml>;
