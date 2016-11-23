@@ -1,6 +1,6 @@
 from django.db import models
 from skosxl.models import Concept
-from .settings import TARGET_NAMESPACE_FT 
+from .settings import TARGET_NAMESPACE_FT, SITEURL
 from django.utils.translation import ugettext_lazy as _
 import datetime
 
@@ -59,6 +59,9 @@ class GazSource(models.Model):
     config = models.ForeignKey(GazSourceConfig)
     filter = models.TextField(max_length = 1000,blank=True,null=True,help_text="optional filter to further refine selection of features defined in config") 
 
+    def url(self):
+        return "".join((SITEURL,'def/gazetteer/sources/',source))
+        
     def __unicode__(self):
         return ( self.source_type + ' : ' + self.source )
 # location type will be a SKOS Concept - this gives us direct access to the code - and indirect to any labels via Labels.objects.filter(concept = self.concept)

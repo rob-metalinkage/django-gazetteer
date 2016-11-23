@@ -5,6 +5,7 @@ from itertools import islice
 from django.http import HttpResponse, Http404
 from geonode.utils import json_response
 import json
+import gazetteer.fixtures
 from gazetteer.models import Location, LocationName, to_date, DATE_STRATEGY_EARLIEST,DATE_STRATEGY_LATEST,DATE_STRATEGY_ALWAYS,DATE_STRATEGY_IFNULL
 from skosxl.models import Notation, Concept
 
@@ -29,6 +30,13 @@ def genlinksets(req) :
     from gazetteer.linksets import genLinkSets
     return HttpResponse(genLinkSets())    
 
+def initrdf(req) :
+    #import pdb; pdb.set_trace()
+    from gazetteer.rdf_io_config import *
+    load_base_namespaces()
+    load_urirules()
+    return HttpResponse(load_rdf_mappings())   
+    
 def loadconfigs(req) :
     return HttpResponse(gazetteer.fixtures.loadconfigs())    
 @csrf_exempt
