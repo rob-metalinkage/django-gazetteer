@@ -36,7 +36,7 @@ def harvestsource(req, layerid):
 
     #endpoint =  req.build_absolute_uri(reverse('updateloc'))
     try:
-        return HttpResponse ( status=201, mimetype="application/json", content= harvest(sourcetype, sourcelayer ,maxfeatures) )
+        return HttpResponse ( status=201, content_type="application/json", content= harvest(sourcetype, sourcelayer ,maxfeatures) )
     except Exception as e:
         return HttpResponse( status=500, content=e)
   
@@ -60,7 +60,7 @@ def harvestlayer(req, sourcetype, layer_name):
  
     #endpoint =  req.build_absolute_uri(reverse('updateloc'))
     try:
-        return HttpResponse ( status=201, mimetype="application/json", content= harvest(sourcetype, sourcelayer ,maxfeatures) )
+        return HttpResponse ( status=201, content_type="application/json", content= harvest(sourcetype, sourcelayer ,maxfeatures) )
     except Exception as e:
         return HttpResponse( status=500, content=e)
   
