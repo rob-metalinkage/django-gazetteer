@@ -13,11 +13,9 @@ from gazetteer.settings import TARGET_NAMESPACE_FT
 def load_base_ft():
     (sch,created) = Scheme.objects.get_or_create(uri=TARGET_NAMESPACE_FT[:-1], defaults = { 'pref_label' :"Gaz Feature types" })
     try:
-        (ft,created) = Concept.objects.get_or_create(term="ADMIN", defaults = { 'pref_label' :"Populated Place", 'definition':"Populated place"} , scheme = sch)
+        (ft,created) = Concept.objects.get_or_create(term="ADMIN", defaults = { 'pref_label' :"Administrative unit", 'definition':"An administrative unit"} , scheme = sch)
     except:
         pass
-
-# now set up cross references from NGA feature types namespace
 
 # now set up harvest config
 def load_ft_mappings() :
@@ -25,18 +23,15 @@ def load_ft_mappings() :
 
 def load_config() :
     try:
-        GazSourceConfig.objects.filter(name="TM_WorldBoundaries").delete()
+        GazSourceConfig.objects.filter(name="City Administrave Area Annexations").delete()
     except:
         pass
-    config=GazSourceConfig.objects.create(lat_field="lat", name="TM_WorldBoundaries", long_field="lon")
+    config=GazSourceConfig.objects.create(geom_field="wkb_geometry", name="City Administrave Area Annexations")
     NameFieldConfig.objects.create(config=config,language="en", as_default=True, languageNamespace="", field="name", languageField="")
     LocationTypeField.objects.create(field='"ADMIN"',namespace=TARGET_NAMESPACE_FT, config=config)
     CodeFieldConfig.objects.create(config=config,field="iso3",namespace="http://mapstory.org/id/countries/iso3")
-    CodeFieldConfig.objects.create(config=config,field="iso2",namespace="http://mapstory.org/id/countries/iso2")
-    CodeFieldConfig.objects.create(config=config,field="un",namespace="http://mapstory.org/id/countries/un")
-    CodeFieldConfig.objects.create(config=config,field="fips",namespace="http://mapstory.org/id/countries/fips")
-
-    (s,created) = GazSource.objects.get_or_create(source="tm_world_borders", config=config, source_type="mapstory")
+    
+    (s,created) = GazSource.objects.get_or_create(source="istanbul", config=config, source_type="mapstory")
     print (s,created)
 
 """

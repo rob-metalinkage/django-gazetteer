@@ -21,7 +21,7 @@ def load_base_ft():
 
 # now set up harvest config
 def load_ft_mappings() :
-    (sch2,created) = Scheme.objects.get_or_create(uri="http://mapstory.org/def/ft/nga",  defaults = { 'pref_label' : "NGA gaz codes"} )
+    (sch2,created) = Scheme.objects.get_or_create(uri="https://gazetteer.mapstory.org/def/ft/nga",  defaults = { 'pref_label' : "NGA gaz codes"} )
     (ft2,created) = Concept.objects.get_or_create(term="PPLA",  scheme = sch2 , defaults = { 'pref_label' :"Populated Place", 'definition':"Populated place"} )
     (ft3,created) = Concept.objects.get_or_create(term="PPLA3", scheme = sch2 , defaults = { 'pref_label' :"Populated Place", 'definition':"Populated place"} )
     (mr,created) = MapRelation.objects.get_or_create(match_type=1, origin_concept=ft2 , uri="".join((TARGET_NAMESPACE_FT,"PPL")))
@@ -34,7 +34,7 @@ def load_config() :
         pass
     config=GazSourceConfig.objects.create(lat_field="lat", name="NGA GNS gazetteer", long_field="long")
 
-    LocationTypeField.objects.create(field='dsg',namespace="http://mapstory.org/def/ft/nga/", config=config)
+    LocationTypeField.objects.create(field='dsg',namespace="https://gazetteer.mapstory.org/def/ft/nga/", config=config)
     
     NameFieldConfig.objects.create(config=config,language="", as_default=True, languageNamespace="http://geonames.nga.mil/def/lang/", field="full_name_", languageField="LC",nameType = 'Endonym')
     NameFieldConfig.objects.create(config=config,language="", as_default=False, languageNamespace="http://geonames.nga.mil/def/lang/", field="full_nam_1", languageField="LC",nameType = 'Exonym')

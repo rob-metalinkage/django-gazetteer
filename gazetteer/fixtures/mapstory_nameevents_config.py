@@ -21,12 +21,8 @@ def load_base_ft():
 
 # now set up harvest config
 def load_ft_mappings() :
-    (sch2,created) = Scheme.objects.get_or_create(uri="http://mapstory.org/def/ft/nga",  defaults = { 'pref_label' : "NGA gaz codes"} )
-    (ft2,created) = Concept.objects.get_or_create(term="PPLA",  scheme = sch2 , defaults = { 'pref_label' :"Populated Place", 'definition':"Populated place"} )
-    (ft3,created) = Concept.objects.get_or_create(term="PPLA3", scheme = sch2 , defaults = { 'pref_label' :"Populated Place", 'definition':"Populated place"} )
-    (mr,created) = MapRelation.objects.get_or_create(match_type=1, origin_concept=ft2 , uri="".join((TARGET_NAMESPACE_FT,"PPL")))
-    (mr,created) = MapRelation.objects.get_or_create(match_type=1, origin_concept=ft3 , uri="".join((TARGET_NAMESPACE_FT,"PPL")))
-
+    pass
+    
 def load_config() :
     try:
         GazSourceConfig.objects.filter(name="Mapstory naming events special format").delete()

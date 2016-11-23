@@ -1,1 +1,3 @@
-TARGET_NAMESPACE_FT = 'http://mapstory.org/def/featuretypes/gazetteer/'
+TARGET_NAMESPACE_FT = 'https://gazetteer.mapstory.org/def/featuretypes/gazetteer/'
+# this ought to be inherited from the containing application settings...
+SITEURL="http://192.186.56.151/"

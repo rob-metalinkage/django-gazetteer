@@ -22,7 +22,7 @@ except:
 try:    
     config=GazSourceConfig.objects.create(lat_field="lat", name="Geonames country file dump", long_field="long")
 
-    LocationTypeField.objects.create(field='dsg',namespace="http://mapstory.org/def/ft/nga/", config=config)
+    LocationTypeField.objects.create(field='dsg',namespace="https://gazetteer.mapstory.org/def/ft/nga/", config=config)
     
     NameFieldConfig.objects.create(config=config,language="", as_default=True, languageNamespace="http://geonames.nga.mil/def/lang/", field="full_name_", languageField="LC",name_type = 'Endonym')
     NameFieldConfig.objects.create(config=config,language="", as_default=False, languageNamespace="http://geonames.nga.mil/def/lang/", field="full_nam_1", languageField="LC",name_type = 'Exonym')
