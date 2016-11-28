@@ -16,30 +16,54 @@ def load_base_namespaces():
     """
         load namespaces for the meta model
     """
-    Namespace.objects.get_or_create( uri='http://www.w3.org/1999/02/22-rdf-syntax-ns#', defaults = { 'prefix' : 'rdf' , 'notes': 'RDF' } )
-    Namespace.objects.get_or_create( uri='http://www.w3.org/2000/01/rdf-schema#', defaults = { 'prefix' : 'rdfs' , 'notes': 'RDFS' } )
-    Namespace.objects.get_or_create( uri='http://www.w3.org/2004/02/skos/core#', defaults = { 'prefix' : 'skos' , 'notes': 'SKOS' } )
-    Namespace.objects.get_or_create( uri='http://www.w3.org/2008/05/skos-xl#', defaults = { 'prefix' : 'skosxl' , 'notes': 'SKOSXL' } )
-    Namespace.objects.get_or_create( uri='http://xmlns.com/foaf/0.1/', defaults = { 'prefix' : 'foaf' , 'notes': 'FOAF' } )
-    Namespace.objects.get_or_create( uri='http://purl.org/dc/terms/', defaults = { 'prefix' : 'dct' , 'notes': 'Dublin Core Terms' } )
-    Namespace.objects.get_or_create( uri='http://www.w3.org/ns/dcat#', defaults = { 'prefix' : 'dcat' , 'notes': 'DCAT' } )
-    Namespace.objects.get_or_create( uri='http://www.w3.org/2001/XMLSchema#', defaults = { 'prefix' : 'xsd' , 'notes': 'XSD' } )
+    _loadNamespace( uri='http://www.w3.org/1999/02/22-rdf-syntax-ns#', prefix='rdf' , defaults={ 'notes' :  'RDF' } )
+    _loadNamespace( uri='http://www.w3.org/2000/01/rdf-schema#', prefix='rdfs' , defaults = {  'notes' :  'RDFS' } )
+    _loadNamespace( uri='http://www.w3.org/2004/02/skos/core#', prefix='skos' , defaults = {  'notes' :  'SKOS' } )
+    _loadNamespace( uri='http://www.w3.org/2008/05/skos-xl#', prefix='skosxl' , defaults = {  'notes' :  'SKOSXL' } )
+    _loadNamespace( uri='http://xmlns.com/foaf/0.1/', prefix='foaf' , defaults = {  'notes' :  'FOAF' } )
+    _loadNamespace( uri='http://purl.org/dc/terms/', prefix='dct' , defaults = {  'notes' :  'Dublin Core Terms' } )
+    _loadNamespace( uri='http://www.w3.org/ns/dcat#', prefix='dcat' , defaults = {  'notes' :  'DCAT' } )
+    _loadNamespace( uri='http://www.w3.org/2001/XMLSchema#', prefix='xsd' , defaults = {  'notes' :  'XSD' } )
 
-    Namespace.objects.get_or_create( uri='http://id.sirf.net/def/schema/lid/', defaults = { 'prefix' : 'lid' , 'notes': 'LID - allows characterisation of resources such as VoiD:technicalFeatures against Linked Data API view names' } )
+    _loadNamespace( uri='http://id.sirf.net/def/schema/lid/', prefix='lid' , defaults = {  'notes' :  'LID - allows characterisation of resources such as VoiD:technicalFeatures against Linked Data API view names' } )
     
-    Namespace.objects.get_or_create( uri='http://rdfs.org/ns/void#', defaults = { 'prefix' : 'void' , 'notes': 'VoiD - vocabulary of interlinked datasets' } )
-    Namespace.objects.get_or_create( uri='http://www.w3.org/2003/01/geo/wgs84_pos#', defaults = { 'prefix' : 'geo' , 'notes': 'geo WGS84 positioning' } )
+    _loadNamespace( uri='http://rdfs.org/ns/void#', prefix='void' , defaults = {  'notes' :  'VoiD - vocabulary of interlinked datasets' } )
+    _loadNamespace( uri='http://www.w3.org/2003/01/geo/wgs84_pos#', prefix='geo' , defaults = {  'notes' :  'geo WGS84 positioning' } )
 
-    
-    Namespace.objects.get_or_create( uri='https://gazetteer.mapstory.org/def/ontology/mapstory_api/', defaults = { 'prefix' : 'msapi' , 'notes': 'Mapstory API definitions - VoiD descriptions to generate links to resources' } )
-    Namespace.objects.get_or_create( uri='https://gazetteer.mapstory.org/def/ontology/geonode_api/', defaults = { 'prefix' : 'gnapi' , 'notes': 'Geonode API definitions - VoiD descriptions to generate links to resources' } )
-    
-    Namespace.objects.get_or_create( uri='https://gazetteer.mapstory.org/def/gazetteer/sources/', defaults = { 'prefix' : 'gazsrc' , 'notes': 'Gazetteer sources - uploaded layers from which locations are mapped' } )
-    Namespace.objects.get_or_create( uri='https://gazetteer.mapstory.org/def/gazetteer/index/', defaults = { 'prefix' : 'gaz' , 'notes': 'Master gazetteer dataset - the index of all place names' } )
-    Namespace.objects.get_or_create( uri='https://gazetteer.mapstory.org/def/ft/', defaults = { 'prefix' : 'gftsrc' , 'notes': 'source feature type codes' } )
-    Namespace.objects.get_or_create( uri=TARGET_NAMESPACE_FT, defaults = { 'prefix' : 'gft' , 'notes': 'Gazetteer Feature Types'} )
-    
+    # TODO - should point to stable defs once published
+    _loadNamespace( uri='https://gazetteer.mapstory.org/def/ontology/mapstory_api/', prefix='msapi' , defaults = {  'notes' :  'Mapstory API definitions - VoiD descriptions to generate links to resources' } )
+    _loadNamespace( uri='https://gazetteer.mapstory.org/def/ontology/geonode_api/', prefix='gnapi' , defaults = {  'notes' :  
+
+    # TODO - global master or local FT list?
+    'Geonode API definitions - VoiD descriptions to generate links to resources' } )
+    _loadNamespace( uri=TARGET_NAMESPACE_FT, prefix='gft' , defaults = {  'notes' :  'Gazetteer Feature Types'} )
+  
+    # TODO - these are for generated resources and should be synced to SITEURL
+    _loadNamespace( uri='https://gazetteer.mapstory.org/def/gazetteer/sources/', prefix='gazsrc' , defaults = {  'notes' :  'Gazetteer sources - uploaded layers from which locations are mapped' } )
+    _loadNamespace( uri='https://gazetteer.mapstory.org/def/gazetteer/index/', prefix='gaz' , defaults = {  'notes' :  'Master gazetteer dataset - the index of all place names' } )
+    _loadNamespace( uri='https://gazetteer.mapstory.org/def/ft/', prefix='gftsrc' , defaults = {  'notes' :  'source feature type codes' } )
+   
     print "loading base namespaces"
+    
+def _loadNamespace(uri,prefix,defaults):
+    """Brutally load namespace killing any existing namespace with uri or prefix that matches"""
+    msg = ""
+    try:
+        pre = Namespace.objects.get(uri=uri)
+        msg = "Replacing ns with URI %s" % uri
+        pre.delete()
+    except:
+        pass
+    try:
+        pre = Namespace.objects.get(prefix=prefix)
+        msg = " , ".join(("Replacing ns with Prefix %s" % prefix,msg))
+        pre.delete()
+    except:
+        pass
+    
+    Namespace.objects.get_or_create( uri=uri, prefix=prefix, defaults = defaults )
+    # TODO should log these I guess.
+    return msg
     
 def load_urirules() :
     """
