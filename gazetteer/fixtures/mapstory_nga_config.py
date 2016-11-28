@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 # from django.db import migrations, models
 
 from gazetteer.models import GazSource,GazSourceConfig,LocationTypeField,CodeFieldConfig,NameFieldConfig
-from skosxl.models import Concept, Scheme, MapRelation
+from skosxl.models import Concept, Scheme, Label, MapRelation
 from gazetteer.settings import TARGET_NAMESPACE_FT    
 
 
@@ -21,9 +21,11 @@ def load_base_ft():
 
 # now set up harvest config
 def load_ft_mappings() :
-    (sch2,created) = Scheme.objects.get_or_create(uri="https://gazetteer.mapstory.org/def/ft/nga",  defaults = { 'pref_label' : "NGA gaz codes"} )
+    (sch2,created) = Scheme.objects.get_or_create(uri="https://gazetteer.mapstory.org/def/ft/nga",  defaults = { 'pref_label' : "NGA gazetteer feature codes"} )
     (ft2,created) = Concept.objects.get_or_create(term="PPLA",  scheme = sch2 , defaults = { 'pref_label' :"Populated Place", 'definition':"Populated place"} )
-    (ft3,created) = Concept.objects.get_or_create(term="PPLA3", scheme = sch2 , defaults = { 'pref_label' :"Populated Place", 'definition':"Populated place"} )
+    (lab,created) = Label.objects.get_or_create(concept=ft2, label_text="Populated place", language="en")
+    (ft3,created) = Concept.objects.get_or_create(term="PPLA3", scheme = sch2 , defaults = { 'pref_label' :"Populated Place", 'definition':"Populated place: seat of a third-order administrative division"} )
+    (lab,created) = Label.objects.get_or_create(concept=ft3, label_text="Populated place (seat of ADM3)", language="en")
     (mr,created) = MapRelation.objects.get_or_create(match_type=1, origin_concept=ft2 , uri="".join((TARGET_NAMESPACE_FT,"PPL")))
     (mr,created) = MapRelation.objects.get_or_create(match_type=1, origin_concept=ft3 , uri="".join((TARGET_NAMESPACE_FT,"PPL")))
 

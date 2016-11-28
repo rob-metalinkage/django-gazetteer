@@ -37,7 +37,7 @@ def load_base_namespaces():
     Namespace.objects.get_or_create( uri='https://gazetteer.mapstory.org/def/gazetteer/sources/', defaults = { 'prefix' : 'gazsrc' , 'notes': 'Gazetteer sources - uploaded layers from which locations are mapped' } )
     Namespace.objects.get_or_create( uri='https://gazetteer.mapstory.org/def/gazetteer/index/', defaults = { 'prefix' : 'gaz' , 'notes': 'Master gazetteer dataset - the index of all place names' } )
     Namespace.objects.get_or_create( uri='https://gazetteer.mapstory.org/def/ft/', defaults = { 'prefix' : 'gftsrc' , 'notes': 'source feature type codes' } )
-    Namespace.objects.get_or_create( uri='https://gazetteer.mapstory.org/def/featuretypes/', defaults = { 'prefix' : 'gft' , 'notes': 'Gazetteer Feature Types'} )
+    Namespace.objects.get_or_create( uri=TARGET_NAMESPACE_FT, defaults = { 'prefix' : 'gft' , 'notes': 'Gazetteer Feature Types'} )
     
     print "loading base namespaces"
     
