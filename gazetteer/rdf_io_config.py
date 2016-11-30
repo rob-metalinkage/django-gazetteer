@@ -94,7 +94,7 @@ def load_rdf_mappings():
     am = AttributeMapping(scope=pm, attr="latitude", predicate="geo:lat", is_resource=False).save()
     am = AttributeMapping(scope=pm, attr="longitude", predicate="geo:long", is_resource=False).save()
     am = AttributeMapping(scope=pm, attr="locationname.name@language", predicate="msapi:namesource", is_resource=False).save()
-    em = EmbeddedMapping(scope=pm, attr="locationname[namespace=]" , predicate="msapi:namesource", struct="""msapi:name name ; msapi:language language ; msapi:namespace namespace ;  msapi:startDate startDate ; msapi:endDate endDate ; msapi:source nameUsed.source ; msapi:attr nameUsed.config.codefieldconfig.field ; rdfs:seeAlso <%sdef/gazetteer/sources/{nameUsed.source}?_view=name&name={name}>""" ).save()
+    em = EmbeddedMapping(scope=pm, attr="locationname[namespace=]" , predicate="msapi:namesource", struct="""msapi:name name ; msapi:language language ; msapi:namespace namespace ;  msapi:startDate startDate ; msapi:endDate endDate ; msapi:source nameUsed.source ; msapi:attr nameUsed.config.codefieldconfig.field ; rdfs:seeAlso <%sdef/gazetteer/sources/{nameUsed.source}?_view=name&name={name}>""" % SITEURL ).save()
     em = EmbeddedMapping(scope=pm, attr="locationname[namespace=None]" , predicate="msapi:namesource", struct="""msapi:name name ; msapi:language language ; msapi:namespace namespace ;  msapi:startDate startDate ; msapi:endDate endDate ; msapi:source nameUsed.source ; msapi:attr nameUsed.config.namefieldconfig.field ; rdfs:seeAlso <%sdef/gazetteer/sources/{nameUsed.source}?_view=name&name={name}>""" % SITEURL ).save()
     em = EmbeddedMapping(scope=pm, attr="id" , predicate="rdfs:seeAlso", struct="<{$URI}?_view=alternates>" ).save()
     
