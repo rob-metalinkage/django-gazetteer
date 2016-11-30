@@ -1,9 +1,16 @@
 from django.db import models
 from skosxl.models import Concept
-from .settings import TARGET_NAMESPACE_FT, SITEURL
+from .settings import TARGET_NAMESPACE_FT 
+from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 import datetime
 
+SITEURL=settings.SITEURL
+try:
+    TARGET_NAMESPACE_FT=settings.TARGET_NAMESPACE_FT
+except:
+    pass
+    
 # choices 
 DATE_STRATEGY_EARLIEST = 1 # choose earliest of provided and stored date
 DATE_STRATEGY_LATEST = 2 # choose latest of provided and stored date

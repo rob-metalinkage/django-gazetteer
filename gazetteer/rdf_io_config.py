@@ -4,7 +4,13 @@
 
 from gazetteer.models import GazSource,GazSourceConfig,LocationTypeField,CodeFieldConfig,NameFieldConfig
 from rdf_io.models import ObjectMapping, ObjectType
-from gazetteer.settings import TARGET_NAMESPACE_FT,SITEURL    
+from gazetteer.settings import TARGET_NAMESPACE_FT
+from django.conf import settings
+SITEURL=settings.SITEURL
+try:
+    TARGET_NAMESPACE_FT=settings.TARGET_NAMESPACE_FT
+except:
+    pass 
 
 from rdf_io.models import Namespace, ObjectType,ObjectMapping,AttributeMapping,EmbeddedMapping 
 from django.contrib.contenttypes.models import ContentType
