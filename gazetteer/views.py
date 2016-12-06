@@ -34,6 +34,7 @@ def initrdf(req) :
     #import pdb; pdb.set_trace()
     from gazetteer.rdf_io_config import *
     load_base_namespaces()
+    #load_baseline()
     load_urirules()
     return HttpResponse(load_rdf_mappings())   
     

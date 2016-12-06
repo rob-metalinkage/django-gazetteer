@@ -17,7 +17,7 @@
 
 @prefix void: <http://rdfs.org/ns/void#> .
 
-void:Dataset 
+lid:lidset 
 	spin:rule [ 
 	     a sp:Construct ;
 	     rdfs:label "LID view"@en;
@@ -28,10 +28,12 @@ void:Dataset
 			PREFIX void:<http://rdfs.org/ns/void#>
 			PREFIX owl:<http://www.w3.org/2002/07/owl#>
 			CONSTRUCT  { 
-			    ?s void:feature ?if
-			}
-			WHERE {
-			        ?s a void:Dataset .
+			    ?s void:feature ?if .
+			    ?s rdfs:seeAlso ?link
+			   }
+			 WHERE { 
+			 
+			        ?s a lid:lidset BIND ( IRI(CONCAT( str(?s), "?_view=alternates" )) AS ?link ). 
 			        ?s rdf:type ?t . 
 			        ?t rdfs:subClassOf ?bn .   
 			        ?bn owl:someValuesFrom ?if .
@@ -53,7 +55,7 @@ void:Dataset
 			PREFIX dcterms:<http://purl.org/dc/terms/>
 			CONSTRUCT  { ?f dcterms:hasFormat ?fmt}
 			 WHERE {
-			 ?s a void:Dataset .
+			 ?s a lid:lidset .
 			 ?s void:feature ?f . 
 			 ?f a ?ftype .
 			 ?ftype dcterms:hasFormat ?fmt .

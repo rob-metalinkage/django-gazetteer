@@ -17,12 +17,12 @@
 
 @prefix void: <http://rdfs.org/ns/void#> .
 
-@prefix mapstory: <http://mapstory.org/def/resourcetypes/> .
+@prefix msapi: <https://gazetteer.mapstory.org/def/ontology/mapstory_api/> .
 
 # import lid_metamodel, void, cube...
 
 # spin rules for SKOS closures
-mapstory:gazsource a rdfs:Class;
+msapi:SourceDataset a rdfs:Class;
 	rdfs:subClassOf lid:lidset ;
 	# spin rule to trigger RDFS entailment - Profiles are an RDFS class, datasets maybe described as instances of such profiles
 	rdfs:label "A data source containing location names collated in the mapstory linked data gazetteer" ;
@@ -30,10 +30,11 @@ mapstory:gazsource a rdfs:Class;
 
 .
 
-mapstory:sourceView  a void:Technnical Feature;
-	lid:viewName "mapstory:source" ;
+msapi:sourceView  a void:TechnnicalFeature;
+	lid:viewName "msapi:source" ;
 	dcterms:hasFormat <http://purl.org/NET/mediatypes/application/rdf+xml>, 
                             <http://purl.org/NET/mediatypes/text/html>, 
                             <http://purl.org/NET/mediatypes/application/json>, 
                             <http://purl.org/NET/mediatypes/application/rdf+ttl> ,
                         <http://purl.org/NET/mediatypes/application/xml>;
+                        .
