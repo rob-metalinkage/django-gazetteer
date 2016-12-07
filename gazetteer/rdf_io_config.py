@@ -7,6 +7,8 @@ from rdf_io.models import ObjectMapping, ObjectType
 from gazetteer.settings import TARGET_NAMESPACE_FT
 from django.conf import settings
 SITEURL=settings.SITEURL
+if SITEURL[-1:] == '/' :
+    SITEURL=SITEURL[:-1]
 try:
     TARGET_NAMESPACE_FT=settings.TARGET_NAMESPACE_FT
 except:
@@ -18,8 +20,6 @@ RDFSERVER=settings.RDFSERVER
 from rdf_io.models import Namespace, ObjectType,ObjectMapping,AttributeMapping,EmbeddedMapping 
 from django.contrib.contenttypes.models import ContentType
 from skosxl.models import Scheme
-
-BASE_URI="https://gazetteer.mapstory.org/def/gazetteer/sources"
 
 # mappings for format codes for different technologies
 RDFLIB_CODES = { 'xml': 'xml' , 'ttl' : 'turtle', 'json' : 'json-ld', 'html' : 'html' , 'rdf' : 'xml' }
@@ -52,8 +52,8 @@ def load_base_namespaces():
     _loadNamespace( uri=TARGET_NAMESPACE_FT, prefix='gft' , defaults = {  'notes' :  'Gazetteer Feature Types'} )
   
     # these are for generated resources and should be synced to SITEURL - unless some other hostname spoofing technique is to be used.
-    _loadNamespace( uri=''.join((SITEURL,'def/gazetteer/sources/')), prefix='gazsrc' , defaults = {  'notes' :  'Gazetteer sources - uploaded layers from which locations are mapped' } )
-    _loadNamespace( uri=''.join((SITEURL,'def/gazetteer/index/')), prefix='gaz' , defaults = {  'notes' :  'Master gazetteer dataset - the index of all place names' } )
+    _loadNamespace( uri=''.join((SITEURL,'/def/gazetteer/sources/')), prefix='gazsrc' , defaults = {  'notes' :  'Gazetteer sources - uploaded layers from which locations are mapped' } )
+    _loadNamespace( uri=''.join((SITEURL,'/def/gazetteer/index/')), prefix='gaz' , defaults = {  'notes' :  'Master gazetteer dataset - the index of all place names' } )
     _loadNamespace( uri='https://gazetteer.mapstory.org/def/ft/', prefix='gftsrc' , defaults = {  'notes' :  'source feature type codes' } )
    
     print "loading base namespaces"
@@ -102,6 +102,7 @@ def _clean_rules(label):
         RewriteRule.objects.get(label=label).delete()
     except:
         pass
+
 
         
 def load_urirules() :
@@ -220,21 +221,22 @@ def load_rdf_mappings():
     (object_type,created) = ObjectType.objects.get_or_create(uri="msapi:SourceDataset", defaults = { "label" : "MapStory Layer" })
 
     # quote the target URI namespace as its a constant, not pulled from the model
-    pm = new_mapping(object_type, "GazSource", "Gazetteer Source", "source", ''.join(('"',SITEURL,'def/gazetteer/sources/"')), True )
+    pm = new_mapping(object_type, "GazSource", "Gazetteer Source", "source", ''.join(('"',SITEURL,'/def/gazetteer/sources/"')), True )
     # specific mapping
     am = AttributeMapping(scope=pm, attr="filter", predicate="msapi:sourceFilter", is_resource=False).save()
 
         #(object_type,created) = ObjectType.objects.get_or_create(uri="void:Dataset", defaults = { "label" : "VoiD Dataset" })
-    (object_type,created) = ObjectType.objects.get_or_create(uri="msapi:SourceDataset", defaults = { "label" : "MapStory Layer" })
+    (object_type,created) = ObjectType.objects.get_or_create(uri="msapi:Location", defaults = { "label" : "Gazetteer Location" })
 
     # quote the target URI namespace as its a constant, not pulled from the model
-    pm = new_mapping(object_type, "Location", "Gazetteer entry", "id", ''.join(('"',SITEURL,'def/gazetteer/index/"')), False )
+    pm = new_mapping(object_type, "Location", "Gazetteer entry", "id", ''.join(('"',SITEURL,'/def/gazetteer/index/"')), False )
     # specific mapping
     am = AttributeMapping(scope=pm, attr="locationType.term", predicate="msapi:locationTypeCode", is_resource=False).save()
     am = AttributeMapping(scope=pm, attr="locationType.uri", predicate="msapi:locationType", is_resource=True).save()
     am = AttributeMapping(scope=pm, attr="latitude", predicate="geo:lat", is_resource=False).save()
     am = AttributeMapping(scope=pm, attr="longitude", predicate="geo:long", is_resource=False).save()
-    am = AttributeMapping(scope=pm, attr="locationname.name@language", predicate="msapi:namesource", is_resource=False).save()
+    am = AttributeMapping(scope=pm, attr="locationname.name@language", predicate="skos:altLabel", is_resource=False).save()
+    am = AttributeMapping(scope=pm, attr="defaultName", predicate="skos:prefLabel", is_resource=False).save()
     em = EmbeddedMapping(scope=pm, attr="locationname[namespace=]" , predicate="msapi:namesource", struct="""msapi:name name ; msapi:language language ; msapi:namespace namespace ;  msapi:startDate startDate ; msapi:endDate endDate ; msapi:source nameUsed.source ; msapi:attr nameUsed.config.codefieldconfig.field ; rdfs:seeAlso <%s/def/gazetteer/sources/{nameUsed.source}?_view=name&name={name}>""" % SITEURL ).save()
     em = EmbeddedMapping(scope=pm, attr="locationname[namespace=None]" , predicate="msapi:namesource", struct="""msapi:name name ; msapi:language language ; msapi:namespace namespace ;  msapi:startDate startDate ; msapi:endDate endDate ; msapi:source nameUsed.source ; msapi:attr nameUsed.config.namefieldconfig.field ; rdfs:seeAlso <%s/def/gazetteer/sources/{nameUsed.source}?_view=name&name={name}>""" % SITEURL ).save()
     em = EmbeddedMapping(scope=pm, attr="id" , predicate="rdfs:seeAlso", struct="<{$URI}?_view=alternates>" ).save()
