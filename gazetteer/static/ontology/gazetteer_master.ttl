@@ -100,7 +100,7 @@ mediaimg:jpg  a msapi:encoding ;
 msapi:WFSView  a void:TechnnicalFeature;
 	lid:viewName "msapi:wfs" ;
 	rdfs:label "Link to WFS proxy for an index entry" ;
-#	lid:featurescope "item" ;
+	lid:featurescope "item" ;
 	dcterms:hasFormat   msapi:kml, msapi:gml, <http://purl.org/NET/mediatypes/application/json>, 
                         <http://purl.org/NET/mediatypes/application/xml>;
                         .

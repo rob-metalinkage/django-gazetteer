@@ -24,6 +24,7 @@ from skosxl.models import Scheme
 # mappings for format codes for different technologies
 RDFLIB_CODES = { 'xml': 'xml' , 'ttl' : 'turtle', 'json' : 'json-ld', 'html' : 'html' , 'rdf' : 'xml' }
 GEOSERVER_CODES = { 'xml': 'gml3' , 'gml' : 'gml3', 'json' : 'json', 'kml' : 'kml' }
+ELDA_CODES = { 'xml': 'xml' , 'ttl' : 'ttl', 'json' : 'json', 'html' : 'html' , 'rdf' : 'rdf' }
 
 def load_base_namespaces():
     """
@@ -103,8 +104,42 @@ def _clean_rules(label):
     except:
         pass
 
+def _new_rule(formats, label='', elda_tweak=False, parent=None, register=None,service_location=None,pattern=None,view_pattern=None,description='',tgt='', format_param='_format' ):
+    """Sets up a basic rule using LDA defaults and an mapping of available media types"""
+    #_clean_rules(label)
+    (rule,created) = RewriteRule.objects.get_or_create(label=label , defaults = {
+        'description' : description,
+                    'parent' : parent ,
+                    'register' : register ,
+                    'service_location' : service_location,
+                    'service_params' : None ,
+                    'pattern' : pattern ,
+                    'use_lda' : True ,
+                    'view_param' : '_view' ,
+                    'view_pattern' : view_pattern} ) 
+    if not created:
+        for attr,val in ( ('label',label), ('parent',parent), ('register',register),('service_location',service_location),('pattern',pattern),('view_pattern',view_pattern),('description',description)) :
+            if val and hasattr(rule, attr):
+                setattr(rule, attr, val)
+     
+            rule.save(force_update=True)
+            
+    for ext in formats.keys() :
+        mt = MediaType.objects.get(file_extension=ext)
+                # avoid bug in ELDA HTML - using file extensions but ignoring the fact format overrides it
+        if elda_tweak and ext == 'html' :
+            fmt = ''
+        else:
+            fmt = ''.join(('&',format_param,'=',formats[ext]))
 
-        
+        try:
+            accept = AcceptMapping.objects.get(rewrite_rule=rule,media_type=mt)
+            accept.redirect_to = "".join((tgt, fmt))
+            accept.save()
+        except:
+            AcceptMapping.objects.create(rewrite_rule=rule,media_type=mt, redirect_to="".join((tgt, fmt)) )
+    return rule
+    
 def load_urirules() :
     """Load uriredirect rules for Gazetteer object types.
     
@@ -124,94 +159,47 @@ def load_urirules() :
         
     (reg,created) = UriRegister.objects.get_or_create(label='gazetteer', defaults = { 'url' : '/'.join((defaultroot,'gazetteer')) , 'can_be_resolved' : True} )
     
-    label = 'Gazetteer Master Index'
-    _clean_rules(label)
-    (apirule,created) = RewriteRule.objects.get_or_create(label=label , defaults = {
-        'description' : 'Rules for Gazetteer master index items',
-                    'parent' : None ,
-                    'register' : reg ,
-                    'service_location' : SITEURL,
-                    'service_params' : None ,
-                    'pattern' : 'index/(?P<id>\d+)$' ,
-                    'use_lda' : True ,
-                    'view_param' : '_view' ,
-                    'view_pattern' : None } )
-    for ext in RDFLIB_CODES.keys() :
-        mt = MediaType.objects.get(file_extension=ext)
-        fmt = RDFLIB_CODES[ext]
-        (accept,created) = AcceptMapping.objects.get_or_create(rewrite_rule=apirule,media_type=mt, defaults = {
-            'redirect_to' : "".join(('${server}','/rdf_io/to_rdf/location/id/$1?_format=', fmt)) } )            
+    indexbaserule=_new_rule(RDFLIB_CODES,label = 'Gazetteer Master Index Metadata', register=reg,service_location="".join((RDFSERVER,"/dna")), pattern='index$',description='Rules for Gazetteer master index metadata',tgt='${server}/skos/resource?uri=${uri}')
 
-    label = 'Gazetteer Master Index WFS binding'
-    _clean_rules(label)
-    (apirule,created) = RewriteRule.objects.get_or_create(label=label , defaults = {
-        'description' : 'WFS call using ID for Gazetteer master index items',
-                    'parent' : apirule ,
-                    'register' : None ,
-                    'service_location' : SITEURL,
-                    'service_params' : None ,
-                    'pattern' : None ,
-                    'use_lda' : True ,
-                    'view_param' : '_view' ,
-                    'view_pattern' : 'msapi:wfs'} ) 
-
-    for ext in GEOSERVER_CODES.keys() :
-        mt = MediaType.objects.get(file_extension=ext)
-        fmt = GEOSERVER_CODES[ext]
-        (accept,created) = AcceptMapping.objects.get_or_create(rewrite_rule=apirule,media_type=mt,
-            defaults = {
-            'redirect_to' : "".join(('${server}','/geoserver/geonode/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=geonode:gaz3&CQL_FILTER=id%3D$1&outputFormat=', fmt)) } )                  
-    
-    label= 'Gazetteer Sources'
-    _clean_rules(label)
-    (apirule,created) = RewriteRule.objects.get_or_create(label=label , defaults = {
-        'description' : 'Rules for Gazetteer sources - spatial data objects registered in Linked Data view',
-                    'parent' : None ,
-                    'register' : reg ,
-                    'service_location' : "".join((RDFSERVER,"/dna")) ,
-                    'service_params' : None ,
-                    'pattern' : 'sources/(?P<source>[^\?]+)' ,
-                    'use_lda' : True ,
-                    'view_param' : '_view' ,
-                    'view_pattern' : None } )
-    
-    # sources are registered in the Linked Data layer - so LDA API can be mapped as defaults
-    for ext in ('ttl','json','rdf','xml','html') :
-        mt = MediaType.objects.get(file_extension=ext)
-        # avoid bug in ELDA HTML - using file extensions but ignoring the fact format overrides it
-        if ext == 'html' :
-            fmt = ''
-        else:
-            fmt = ''.join(('&_format=',ext))
-        (accept,created) = AcceptMapping.objects.get_or_create(rewrite_rule=apirule,media_type=mt, defaults = {
-            'redirect_to' : "".join(('${server}/skos/resource?uri=${uri}',fmt)) } )
-    
-    label = 'Gazetteer source data'
-    viewlist = [ {'name': 'alternates', 'apipath': 'lid/resourcelist?baseuri=${uri}&item=None' }, 
-        {'name': 'lid', 'apipath': '${server}/skos/resource?uri=${uri}' }, 
-    ]
+    label = 'Gazetteer metadata'
+    viewlist = [ {'name': 'alternates', 'formats' : ELDA_CODES , 'apipath': '${server}/lid/resourcelist?baseuri=${uri}&item=None' }, 
+        {'name': 'lid',  'formats' : ELDA_CODES , 'apipath': '${server}/skos/resource?uri=${uri}' },           
+        ]
     for view in viewlist:
         id = ' : '.join((label,"view",view['name']))
-        (api_vrule,created) = RewriteRule.objects.get_or_create(
-            label=id,
-            defaults = {
-            'description' : ' : '.join((label,view['name'])) ,
-            'parent' : apirule ,
-            'register' : None ,
-            'service_location' : None ,
-            'service_params' : None ,
-            'pattern' : None ,
-            'use_lda' : True ,
-            'view_param' : '_view' ,
-            'view_pattern' : view['name'] } )
-        for ext in ('ttl','json','rdf','xml','html') :
-            mt = MediaType.objects.get(file_extension=ext)
-            if ext == 'html' :
-                fmt = ''
-            else:
-                fmt = ''.join(('&_format=',ext))
-            (accept,created) = AcceptMapping.objects.get_or_create(rewrite_rule=api_vrule,media_type=mt, defaults = {
-            'redirect_to' : "".join(('${server}/', view['apipath'],fmt)) } )
+        _new_rule(view['formats'], elda_tweak=True, parent=indexbaserule, label = id, view_pattern= view['name'], description=' : '.join((label,view['name'])) , tgt=view['apipath'] )
+        
+    locationbaserule=_new_rule(RDFLIB_CODES,label = 'Gazetteer Master Index', register=reg,service_location=SITEURL, pattern='index/(?P<id>\d+)$',description='Rules for Gazetteer master index items',tgt='${server}/rdf_io/to_rdf/location/id/$1?')
+
+    label = 'Gazetteer index'
+    viewlist = [ {'name': 'alternates', 'formats' : ELDA_CODES , 'apipath': "".join((RDFSERVER,'/dna/lid/resourcelist?baseuri=${server}/def/gazetteer/${path_base}&item=${term}')) }, 
+        {'name': 'lid',  'formats' : RDFLIB_CODES , 'apipath': ''.join((SITEURL,'/rdf_io/to_rdf/location/id/$1?')) },           
+    ]
+
+    for view in viewlist:
+        id = ' : '.join((label,"view",view['name']))
+        _new_rule(view['formats'], elda_tweak=True, parent=locationbaserule, label = id, view_pattern= view['name'], description=' : '.join((label,view['name'])) , tgt=view['apipath'] )
+        
+    _new_rule(GEOSERVER_CODES, elda_tweak=False, parent=locationbaserule, label = 'Gazetteer Master Index WFS binding', view_pattern='msapi:wfs', description='WFS call using ID for Gazetteer master index items' , tgt='${server}/geoserver/geonode/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=geonode:gazetteer&CQL_FILTER=id%3D$1', format_param='outputFormat' )
+                    
+    sourcebaserule=_new_rule(ELDA_CODES, elda_tweak=True, 
+        register=reg, label = 'Gazetteer Sources', service_location= "".join((RDFSERVER,"/dna")),
+        pattern='sources/(?P<source>[^\?]+)',
+        description='Rules for Gazetteer sources - spatial data objects registered in Linked Data view' ,
+        tgt='${server}/skos/resource?uri=${uri}' )
+       
+    
+    label = 'Gazetteer source data'
+    viewlist = [ {'name': 'alternates', 'formats' : ELDA_CODES , 'apipath': '${server}/lid/resourcelist?baseuri=${uri}&item=None' }, 
+        {'name': 'lid',  'formats' : ELDA_CODES , 'apipath': '${server}/skos/resource?uri=${uri}' },
+        {'name': 'name',  'formats' : { 'json' : 'json' }, 'apipath': ''.join((SITEURL,'/gazetteer/location/find?name=$q{name}')) }, 
+        {'name': 'namestart', 'formats' : { 'json' : 'json' }, 'apipath': ''.join((SITEURL,'/gazetteer/location/find?name=$q{name}')) },           
+    ]
+
+    for view in viewlist:
+        id = ' : '.join((label,"view",view['name']))
+        _new_rule(view['formats'], elda_tweak=True, parent=sourcebaserule, label = id, view_pattern= view['name'], description=' : '.join((label,view['name'])) , tgt=view['apipath'] )
+
             
 def load_rdf_mappings():
     """
