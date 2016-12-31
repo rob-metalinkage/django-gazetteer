@@ -6,6 +6,7 @@ urlpatterns = patterns(
     '',
     url(r'location/(?P<locid>\d+)$', getloc, name='getloc'),
     url(r'location/find', findloc, name='findloc'),
+    url(r'location/(?P<locid>\d+)/sourcewfs/(?P<source>[\w\d_]+)', makeWFSlink, name='makeWFSlink'),
     url(r'location/(?P<locid>\d+)/recordname$', recordname, name='recordname'),
     url(r'location/matchloc$', matchloc, name='matchloc'),
     url(r'location/updateloc$', updateloc, name='updateloc'),

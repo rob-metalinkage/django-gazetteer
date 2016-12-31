@@ -6,11 +6,13 @@ from django.http import HttpResponse, Http404
 from geonode.utils import json_response
 import json
 import gazetteer.fixtures
-from gazetteer.models import Location, LocationName, to_date, DATE_STRATEGY_EARLIEST,DATE_STRATEGY_LATEST,DATE_STRATEGY_ALWAYS,DATE_STRATEGY_IFNULL
+from gazetteer.models import Location, LocationName,GazSource, NameFieldConfig, CodeFieldConfig, to_date, DATE_STRATEGY_EARLIEST,DATE_STRATEGY_LATEST,DATE_STRATEGY_ALWAYS,DATE_STRATEGY_IFNULL
 from skosxl.models import Notation, Concept
 
 from django.views.decorators.csrf import csrf_exempt
 
+from django.conf import settings
+SITEURL=settings.SITEURL
 from .settings import TARGET_NAMESPACE_FT 
 
 
@@ -77,7 +79,7 @@ def findloc(req):
     if len(filters) == 0 :
         return HttpResponse('No valid query parameters found %s' % str( FINDPARAMS.keys()) ,status=500)
     try:
-        l = Location.objects.filter(**filters)
+        l = Location.objects.filter(**filters).distinct()
     except Exception as e:
         return HttpResponse(e,status=500)
  
@@ -85,8 +87,7 @@ def findloc(req):
     return json_response(_encodeLocList(l,max,page))
     
 def getloc(req, locid):
-    """
-        Get a location and its associtaed nested properties based on an id.
+    """Get a location and its associated nested properties, based on an id.
     """
     try:
         l = Location.objects.get(pk=locid)
@@ -95,7 +96,9 @@ def getloc(req, locid):
 #    pdb.set_trace()  
     return json_response(_encodeLoc(locid,l))
 
-def _encodeLocList(loclist,max=100,page=1):    
+def _encodeLocList(loclist,max=100,page=1):
+    """encode a list of locations
+    """
     foundlist = []
     count = 0
     for (count,location) in enumerate(islice(loclist,(page-1)*max, page*max),start=1):
@@ -405,3 +408,28 @@ def date_less_than( d1, d2 ) :
     """
     
     return d1 < d2 
+    
+def makeWFSlink(req,source,locid):
+    """Make a WFS API link to a specific source layer for a specific location and name
+    
+    Names may be embedded in multiple places is a source layer, so this utility looks at the source config used and creates an OR filter for a specific name"""
+    filter=""
+    joiner = ""
+    config = GazSource.objects.get(source=source).config
+    codefields = CodeFieldConfig.objects.filter(config=config)
+    if codefields:
+        codes = LocationName.objects.filter(location__id=locid,nameUsed__source=source,namespace__isnull=False)
+        for codefield in codefields:
+            for code in codes:
+                if code.namespace == codefield.namespace :
+                    filter = "".join((filter, joiner," geonode:",codefield.field,"%3D'",code.name,"'"))
+                joiner = "%20OR%20"
+    else:
+        namefields = NameFieldConfig.objects.filter(config=config)
+        names = LocationName.objects.filter(location__id=locid,nameUsed__source=source)
+        for namefield in namefields :
+            for name in names:
+                filter = "".join((filter, joiner," geonode:",namefield.field,"%3D'",name.name,"'"))
+                joiner = "%20OR%20"
+    link = "%s/geoserver/geonode/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=%s:%s&maxFeatures=50&CQL_FILTER=%s" % (SITEURL,'geonode',source, filter)
+    return HttpResponse(link)
