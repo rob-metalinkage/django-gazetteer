@@ -144,30 +144,33 @@ def updateloc(req, *args, **kwargs):
     return _matchloc(req, insert=True )
     
 def _matchloc(req,insert):
-    if req.method != 'POST' :
-        return HttpResponse('Access method not supported', status=405)
-        # will need to do more work ot make GET work - build locobj...
+
     if req.GET.get('pdb') :
         import pdb; pdb.set_trace()
     try:
         if req.method == 'POST':
             locobj = json.loads(req.body)
-            return json_response(matchlocation(locobj,sourcelayer=None,insert=insert))
         elif req.method == 'GET':
-            if not req.GET.get('namespace') and req.GET.get('name').startswith('http') :
-                names = [{ 'name':req.GET.get('name'), 'namespace': req.GET.get('name')[0:req.GET.get('name').rfind('/')+1] }]
+            if not req.GET.get('name'):
+                return  HttpResponse('must specify name and language or namespace', status=400)
+            elif not req.GET.get('namespace') and req.GET.get('name').startswith('http') :
+                names = [{ 'name':req.GET.get('name')[req.GET.get('name').rfind('/')+1:], 'namespace': req.GET.get('name')[0:req.GET.get('name').rfind('/')+1] }]
             elif req.GET.get('namespace') and req.GET.get('name') :
                 names = [{ 'namespace':req.GET.get('namespace'), 'name': req.GET.get('name') }]
             elif req.GET.get('namespace') :
                 return HttpResponse('namespace but no corresponding name specified', status=400)
-            elif req.GET['language'] and req.GET.get('name') :
+            elif req.GET.get('language') and req.GET.get('name') :
                 names = [{ 'language':req.GET['language'], 'name': req.GET.get('name') }]
             else :
-                return  HttpResponse('must specify name and language or namespace', status=400)
-        
-            typecode = req.GET['locationType']
+                names = [{ 'language':None, 'name': req.GET.get('name') }]
+                
+            typecode = req.GET.get('locationType')
+            locobj = { 'locationType': typecode, 'names':names}
         else :
             return HttpResponse('method not supported', status=404) 
+        
+        return json_response(matchlocation(locobj,sourcelayer=None,insert=insert))
+
     except Exception as e:
         # import pdb; pdb.set_trace()   
         return HttpResponse(e, status=400)
