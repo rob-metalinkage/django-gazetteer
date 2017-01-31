@@ -205,15 +205,17 @@ def load_rdf_mappings():
     """
         load RDF mappings for Gazetteer Objects - locations and data sources
     """
-    #(object_type,created) = ObjectType.objects.get_or_create(uri="void:Dataset", defaults = { "label" : "VoiD Dataset" })
+    # Source Dataset - including minimal attribute mappings to to allow clients to link from source to gazetteer search.
     (object_type,created) = ObjectType.objects.get_or_create(uri="msapi:SourceDataset", defaults = { "label" : "MapStory Layer" })
 
     # quote the target URI namespace as its a constant, not pulled from the model
     pm = new_mapping(object_type, "GazSource", "Gazetteer Source", "source", ''.join(('"',SITEURL,'/def/gazetteer/sources/"')), True )
     # specific mapping
     am = AttributeMapping(scope=pm, attr="filter", predicate="msapi:sourceFilter", is_resource=False).save()
+    am = AttributeMapping(scope=pm, attr="config.namefieldconfig.field", predicate="msapi:attr", is_resource=False).save()
+    em = EmbeddedMapping(scope=pm, attr="config.codefieldconfig" , predicate="msapi:codefield", struct="""msapi:attr field ; msapi:namespace namespace""" ,  use_blank=True ).save()
+    
 
-        #(object_type,created) = ObjectType.objects.get_or_create(uri="void:Dataset", defaults = { "label" : "VoiD Dataset" })
     (object_type,created) = ObjectType.objects.get_or_create(uri="msapi:Location", defaults = { "label" : "Gazetteer Location" })
 
     # quote the target URI namespace as its a constant, not pulled from the model
@@ -225,9 +227,10 @@ def load_rdf_mappings():
     am = AttributeMapping(scope=pm, attr="longitude", predicate="geo:long", is_resource=False).save()
     am = AttributeMapping(scope=pm, attr="locationname.name@language", predicate="skos:altLabel", is_resource=False).save()
     am = AttributeMapping(scope=pm, attr="defaultName", predicate="skos:prefLabel", is_resource=False).save()
-    em = EmbeddedMapping(scope=pm, attr="locationname[namespace=]" , predicate="msapi:namesource", struct="""msapi:name name ; msapi:language language ; msapi:namespace namespace ;  msapi:startDate startDate ; msapi:endDate endDate ; msapi:source nameUsed.source ; msapi:attr nameUsed.config.codefieldconfig.field ; rdfs:seeAlso <%s/def/gazetteer/sources/{nameUsed.source}?_view=name&name={name}>""" % SITEURL ).save()
-    em = EmbeddedMapping(scope=pm, attr="locationname[namespace=None]" , predicate="msapi:namesource", struct="""msapi:name name ; msapi:language language ; msapi:namespace namespace ;  msapi:startDate startDate ; msapi:endDate endDate ; msapi:source nameUsed.source ; msapi:attr nameUsed.config.namefieldconfig.field ; rdfs:seeAlso <%s/def/gazetteer/sources/{nameUsed.source}?_view=name&name={name}>""" % SITEURL ).save()
+    em = EmbeddedMapping(scope=pm, attr="locationname[namespace=]" , predicate="msapi:code", struct="""msapi:name name ; msapi:language language ; msapi:namespace namespace ;  msapi:startDate startDate ; msapi:endDate endDate ; msapi:source nameUsed.source""" ).save()
+    em = EmbeddedMapping(scope=pm, attr="locationname[namespace=None]" , predicate="msapi:name", struct="""msapi:name name ; msapi:language language ; msapi:namespace namespace ;  msapi:startDate startDate ; msapi:endDate endDate ; msapi:source nameUsed.source """  ).save()
     em = EmbeddedMapping(scope=pm, attr="id" , predicate="rdfs:seeAlso", struct="<{$URI}?_view=alternates>" ).save()
+    em = EmbeddedMapping(scope=pm, attr="locationname[namespace=].nameUsed" , predicate="msapi:codesource", struct="""msapi:source source; rdfs:seeAlso <%s/gazetteer/location/497/sourcewfs/{source}> ; rdfs:seeAlso <%s/def/gazetteer/sources/{source}?_view=alternates>""" % (SITEURL,SITEURL) ).save()
     
 def new_mapping(object_type,content_type_label, title, idfield, tgt, autopush):
     content_type = ContentType.objects.get(app_label="gazetteer",model=content_type_label.lower())
