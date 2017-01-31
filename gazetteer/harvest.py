@@ -41,8 +41,9 @@ def harvestsource(req, layerid):
         return HttpResponse( status=500, content=e)
   
 def harvestlayer(req, sourcetype, layer_name):
-    """
-        Get data for a layer and its harvest config and harvest to gazetteersing sourcetype and layer name.
+    """Index names (i.e. harvest into gazetteer) a data layer using its configured GazSource object"
+    
+        Get data for a layer and its harvest config and harvest to gazetteer using sourcetype and layer name.
         for each feature, build gaz object - then use to match, insert if necessary,  and record name usages
         the layer set is definined in the settings - and hence the handler to extract the features - from shapefile, postgis etc.
     """
