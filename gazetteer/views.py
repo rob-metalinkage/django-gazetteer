@@ -435,4 +435,8 @@ def makeWFSlink(req,source,locid):
                 filter = "".join((filter, joiner," geonode:",namefield.field,"%3D'",name.name,"'"))
                 joiner = "%20OR%20"
     link = "%s/geoserver/geonode/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=%s:%s&maxFeatures=50&CQL_FILTER=%s" % (SITEURL,'geonode',source, filter)
-    return HttpResponse(link)
+    if req.GET.get('_format') == 'html' :
+        
+        return HttpResponse("""<HTML><BODY>WFS Link to feature(s) matching an identifier: <A href="%s">%s</A></BODY></HTML>""" % (link,link) )
+    else:
+        return HttpResponse(link,status=301)
