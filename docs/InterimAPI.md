@@ -1,6 +1,13 @@
 # django-gazetteer Interim API docs
 
-Describes the Gazetteer module Web API. These are interim docs possibly to be replaced by an automated document generation allowing gazetteer API dcescription to be automatically included in a master project. (This will need to wait until till the target platform for driving Use Case, geonode,  moves to latest version of django..
+Describes the Gazetteer module Web API. These are interim docs possibly to be replaced by an automated document generation allowing gazetteer API dcescription to be automatically included in a master project. (This will need to wait until till the target platform for driving Use Case, geonode,  moves to latest version of django..)
+
+# Modules
+* Access
+* Encode
+* Search
+* Harvest
+* Management tools
 
 # Search 
 `/location/find?{params}`
