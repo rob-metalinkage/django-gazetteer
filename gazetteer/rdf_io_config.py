@@ -230,7 +230,7 @@ def load_rdf_mappings():
     em = EmbeddedMapping(scope=pm, attr="locationname[namespace=]" , predicate="msapi:code", struct="""msapi:name name ; msapi:language language ; msapi:namespace namespace ;  msapi:startDate startDate ; msapi:endDate endDate ; msapi:source nameUsed.source""" ).save()
     em = EmbeddedMapping(scope=pm, attr="locationname[namespace=None]" , predicate="msapi:name", struct="""msapi:name name ; msapi:language language ; msapi:namespace namespace ;  msapi:startDate startDate ; msapi:endDate endDate ; msapi:source nameUsed.source """  ).save()
     em = EmbeddedMapping(scope=pm, attr="id" , predicate="rdfs:seeAlso", struct="<{$URI}?_view=alternates>" ).save()
-    em = EmbeddedMapping(scope=pm, attr="locationname[namespace=].nameUsed" , predicate="msapi:codesource", struct="""msapi:source source; rdfs:seeAlso <%s/gazetteer/location/497/sourcewfs/{source}> ; rdfs:seeAlso <%s/def/gazetteer/sources/{source}?_view=alternates>""" % (SITEURL,SITEURL) ).save()
+    em = EmbeddedMapping(scope=pm, attr="locationname[namespace=].nameUsed" , predicate="msapi:codesource", struct="""msapi:source source; rdfs:seeAlso <%s/gazetteer/location/{^id}/sourcewfs/{source}> ; rdfs:seeAlso <%s/def/gazetteer/sources/{source}?_view=alternates>""" % (SITEURL,SITEURL) ).save()
     
 def new_mapping(object_type,content_type_label, title, idfield, tgt, autopush):
     content_type = ContentType.objects.get(app_label="gazetteer",model=content_type_label.lower())
